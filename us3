@@ -1,1 +1,742 @@
-.
+/*
+## Project Structure (Illustrative within this single file)
+
+src/
+├── app/
+│   ├── models/
+│   │   ├── project.model.ts
+│   │   ├── budget.model.ts
+│   │   └── team.model.ts
+│   ├── services/
+│   │   ├── project.service.ts
+│   │   ├── budget.service.ts
+│   │   └── team-member.service.ts
+│   ├── budget-management/  // MODIFIED
+│   │   ├── budget-management.component.html
+│   │   ├── budget-management.component.ts
+│   │   └── budget-management.component.css
+│   ├── budget-form/
+│   │   └── ...
+│   ├── budget-detail/
+│   │   └── ...
+│   ├── project-form/
+│   │   └── ...
+│   ├── team-management/  // MODIFIED
+│   │   ├── team-management.component.html
+│   │   ├── team-management.component.ts
+│   │   └── team-management.component.css
+│   ├── team-member-form/
+│   │   └── ...
+│   ├── app.component.html
+│   ├── app.component.ts
+│   ├── app.module.ts
+│   └── app-routing.module.ts
+├── main.ts
+├── index.html
+└── styles.css
+
+*/
+
+// =============== src/app/models/budget.model.ts ===============
+export enum ContractStatus {
+    DRAFT = 'DRAFT',
+    SENT = 'SENT',
+    SIGNED = 'SIGNED',
+    ACTIVE = 'ACTIVE',
+    COMPLETED = 'COMPLETED',
+    EXPIRED = 'EXPIRED',
+    TERMINATED = 'TERMINATED'
+}
+
+export interface CreateBudgetRequestDto {
+  movieProjectId: number;
+  totalAllocatedAmount: number;
+  currency: string;
+}
+
+export interface BudgetDto {
+  id: number;
+  movieProjectId: number;
+  movieProjectTitle?: string;
+  totalAllocatedAmount: number;
+  currency: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  categories: BudgetCategoryDto[];
+}
+
+export interface CreateBudgetCategoryRequestDto {
+  name: string;
+  allocatedAmount: number;
+}
+
+export interface BudgetCategoryDto {
+  id: number;
+  name: string;
+  allocatedAmount: number;
+  lineItems: BudgetLineItemDto[];
+}
+
+export interface CreateBudgetLineItemRequestDto {
+  description: string;
+  estimatedCost: number;
+  notes?: string;
+}
+
+export interface BudgetLineItemDto {
+  id: number;
+  description: string;
+  estimatedCost: number;
+  actualCost?: number;
+  notes?: string;
+}
+
+// =============== src/app/models/project.model.ts ===============
+export interface CreateMovieProjectRequest {
+  title: string;
+  genre: string;
+  budget: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  keyTeamMembersInfo: string;
+  startFromScratch: boolean;
+}
+
+export interface MovieProjectResponse {
+  id: number;
+  title: string;
+  genre: string;
+  budget: number;
+  startDate: string;
+  endDate: string;
+  keyTeamMembersInfo: string;
+  startedFromScratch: boolean;
+  createdAt: string;
+  updatedAt: string;
+  projectDashboardStatus: string;
+}
+
+// =============== src/app/models/team.model.ts ===============
+export enum TeamMemberType {
+    CAST = 'CAST',
+    CREW = 'CREW'
+}
+
+export interface CreateTeamMemberRequestDto {
+    projectId: number;
+    name: string;
+    role: string;
+    type: TeamMemberType;
+    contactInfo: string;
+    department?: string;
+    agentInfo?: string;
+    contractDetails?: string;
+    availabilityNotes?: string;
+}
+
+export interface TeamMemberDto {
+    id: number;
+    projectId: number;
+    name: string;
+    role: string;
+    type: TeamMemberType;
+    contactInfo: string;
+    department?: string;
+    agentInfo?: string;
+    contractDetails?: string;
+    availabilityNotes?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+
+// =============== src/app/services/budget.service.ts ===============
+// (No changes from previous version, assumed to be correctly calling backend budget endpoints)
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError, of, timer } from 'rxjs';
+import { catchError, timeout, switchMap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class BudgetService {
+  private budgetsApiUrl = 'http://localhost:8081/api/v1/budgets';
+  private readonly REQUEST_TIMEOUT = 30000;
+
+  constructor(private http: HttpClient) { }
+
+  createBudgetForProject(data: CreateBudgetRequestDto): Observable<BudgetDto> {
+    console.log('BudgetService: createBudgetForProject called with data:', data);
+    return this.http.post<BudgetDto>(`${this.budgetsApiUrl}/project`, data)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error('BudgetService: createBudgetForProject request timed out.');
+            return throwError(() => new Error('Request to create budget timed out. Please try again.'));
+          }
+          return this.handleError(err, 'createBudgetForProject');
+        })
+      );
+  }
+
+  getBudgetById(budgetId: number): Observable<BudgetDto> {
+    console.log(`BudgetService: getBudgetById called for budgetId: ${budgetId}`);
+    return this.http.get<BudgetDto>(`${this.budgetsApiUrl}/${budgetId}`)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`BudgetService: getBudgetById request for ${budgetId} timed out.`);
+            return throwError(() => new Error(`Request to get budget ${budgetId} timed out.`));
+          }
+          return this.handleError(err, `getBudgetById(${budgetId})`);
+        })
+      );
+  }
+
+  getBudgetByMovieProjectId(movieProjectId: number): Observable<BudgetDto | null> {
+    console.log(`BudgetService: getBudgetByMovieProjectId called for movieProjectId: ${movieProjectId}`);
+    return this.http.get<BudgetDto>(`${this.budgetsApiUrl}/project/${movieProjectId}`).pipe(
+      timeout(this.REQUEST_TIMEOUT),
+      catchError(error => {
+        if (error.name === 'TimeoutError') {
+          console.error(`BudgetService: getBudgetByMovieProjectId request for ${movieProjectId} timed out.`);
+          return throwError(() => new Error(`Request to get budget for project ${movieProjectId} timed out.`));
+        }
+        if (error.status === 404) {
+          console.log(`BudgetService: No budget found for movieProjectId: ${movieProjectId}`);
+          return of(null);
+        }
+        return this.handleError(error, `getBudgetByMovieProjectId(${movieProjectId})`);
+      })
+    );
+  }
+
+  addCategoryToBudget(budgetId: number, categoryData: CreateBudgetCategoryRequestDto): Observable<BudgetCategoryDto> {
+    console.log(`BudgetService: addCategoryToBudget called for budgetId: ${budgetId} with data:`, categoryData);
+    return this.http.post<BudgetCategoryDto>(`${this.budgetsApiUrl}/${budgetId}/categories`, categoryData)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`BudgetService: addCategoryToBudget request for budget ${budgetId} timed out.`);
+            return throwError(() => new Error(`Request to add category to budget ${budgetId} timed out.`));
+          }
+          return this.handleError(err, `addCategoryToBudget(budget ${budgetId})`);
+        })
+      );
+  }
+
+  addLineItemToCategory(categoryId: number, lineItemData: CreateBudgetLineItemRequestDto): Observable<BudgetLineItemDto> {
+    console.log(`BudgetService: addLineItemToCategory called for categoryId: ${categoryId} with data:`, lineItemData);
+    return this.http.post<BudgetLineItemDto>(`${this.budgetsApiUrl}/categories/${categoryId}/lineitems`, lineItemData)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`BudgetService: addLineItemToCategory request for category ${categoryId} timed out.`);
+            return throwError(() => new Error(`Request to add line item to category ${categoryId} timed out.`));
+          }
+          return this.handleError(err, `addLineItemToCategory(category ${categoryId})`);
+        })
+      );
+  }
+
+  private handleError(error: HttpErrorResponse, operation: string = 'operation') {
+    let errorMessage = `An unknown error occurred during ${operation}!`;
+    if (error.status === 0) {
+        errorMessage = `Network error or CORS issue during ${operation}. Could not connect to the backend or request was blocked. Please check backend server and CORS configuration.`;
+    } else if (error.error instanceof ErrorEvent) {
+      errorMessage = `Client-side/Network error during ${operation}: ${error.error.message}`;
+    } else {
+      errorMessage = `Backend error during ${operation}. Code: ${error.status}, Message: "${error.message || error.statusText}"`;
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+         errorMessage += ` Details: ${error.error.message}`;
+      } else if (typeof error.error === 'string' && error.error.length < 200 && error.error.length > 0) {
+         errorMessage += ` Server Error: ${error.error}`;
+      }
+    }
+    console.error(`BudgetService Error: ${operation} failed (full details):`, { message: errorMessage, errorObj: error });
+    return throwError(() => new Error(errorMessage));
+  }
+}
+
+// =============== src/app/services/project.service.ts ===============
+// (This service is now ONLY used by ProjectFormComponent for POSTing new projects.
+// The getProjectById method is no longer called by BudgetManagementComponent or TeamManagementComponent)
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError, of, timer } from 'rxjs';
+import { catchError, timeout, switchMap } from 'rxjs/operators';
+// Models are imported in their respective files
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ProjectService {
+  private apiUrl = 'http://localhost:8081/api/v1/projects';
+  private readonly REQUEST_TIMEOUT = 30000;
+
+  constructor(private http: HttpClient) { }
+
+  createProject(projectData: CreateMovieProjectRequest): Observable<MovieProjectResponse> {
+    console.log('ProjectService: createProject called with data:', projectData);
+    return this.http.post<MovieProjectResponse>(this.apiUrl, projectData)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error('ProjectService: createProject request timed out.');
+            return throwError(() => new Error('Request to create project timed out. Please try again.'));
+          }
+          return this.handleError(err, 'createProject');
+        })
+      );
+  }
+
+  // getProjectById is no longer actively used by the modified Budget/Team management components
+  // If you decide to add the GET endpoint to backend later, this method is ready.
+  getProjectById(projectId: number): Observable<MovieProjectResponse> {
+    console.warn(`ProjectService: getProjectById for projectId ${projectId} was called, but frontend components are modified not to use its result for display.`);
+    // This would be the actual call if the backend endpoint existed and was needed:
+    // return this.http.get<MovieProjectResponse>(`${this.apiUrl}/${projectId}`)
+    //   .pipe(
+    //     timeout(this.REQUEST_TIMEOUT),
+    //     catchError(err => {
+    //       if (err.name === 'TimeoutError') {
+    //         return throwError(() => new Error(`Request to get project ${projectId} timed out.`));
+    //       }
+    //       return this.handleError(err, `getProjectById(${projectId})`);
+    //     })
+    //   );
+    // Returning a dummy observable to satisfy type, but it won't be used meaningfully by the modified components
+    return of({ id: projectId, title: `Project ${projectId} (Details Not Fetched)`, genre:'', budget:0, startDate:'', endDate:'', keyTeamMembersInfo:'', startedFromScratch:false, createdAt:'', updatedAt:'', projectDashboardStatus:'' } as MovieProjectResponse).pipe(timer(10), switchMap(val => of(val)));
+  }
+
+  private handleError(error: HttpErrorResponse, operation: string = 'operation') {
+    let errorMessage = `An unknown error occurred during ${operation}!`;
+     if (error.status === 0) {
+        errorMessage = `Network error or CORS issue during ${operation}. Could not connect to the backend or request was blocked. Please check backend server and CORS configuration.`;
+    } else if (error.error instanceof ErrorEvent) {
+      errorMessage = `Client-side/Network error during ${operation}: ${error.error.message}`;
+    } else {
+      errorMessage = `Backend error during ${operation}. Code: ${error.status}, Message: "${error.message || error.statusText || 'Server error'}"`;
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+         errorMessage += ` Details: ${error.error.message}`;
+      } else if (typeof error.error === 'string' && error.error.length < 200 && error.error.length > 0) {
+         errorMessage += ` Server Error: ${error.error}`;
+      }
+    }
+    console.error(`ProjectService Error: ${operation} failed (full details):`, { message: errorMessage, errorObj: error });
+    return throwError(() => new Error(errorMessage));
+  }
+}
+
+
+// =============== src/app/services/team-member.service.ts ===============
+// (No changes from previous version, assumed to be correctly calling backend team member endpoints)
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError, timeout } from 'rxjs/operators';
+// Models are imported in their respective files
+
+@Injectable({
+  providedIn: 'root'
+})
+export class TeamMemberService {
+  private apiUrl = 'http://localhost:8081/api/v1';
+  private readonly REQUEST_TIMEOUT = 30000;
+
+  constructor(private http: HttpClient) { }
+
+  getTeamMembers(projectId: number): Observable<TeamMemberDto[]> {
+    console.log(`TeamMemberService: getTeamMembers called for projectId: ${projectId}`);
+    return this.http.get<TeamMemberDto[]>(`${this.apiUrl}/projects/${projectId}/team-members`)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`TeamMemberService: getTeamMembers for project ${projectId} timed out.`);
+            return throwError(() => new Error(`Request to get team members for project ${projectId} timed out.`));
+          }
+          return this.handleError(err, `getTeamMembers(project ${projectId})`);
+        })
+      );
+  }
+
+  addTeamMember(projectId: number, memberData: CreateTeamMemberRequestDto): Observable<TeamMemberDto> {
+    console.log(`TeamMemberService: addTeamMember called for projectId: ${projectId} with data:`, memberData);
+    const dataToSend = { ...memberData, projectId };
+    return this.http.post<TeamMemberDto>(`${this.apiUrl}/projects/${projectId}/team-members`, dataToSend)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`TeamMemberService: addTeamMember for project ${projectId} timed out.`);
+            return throwError(() => new Error(`Request to add team member for project ${projectId} timed out.`));
+          }
+          return this.handleError(err, `addTeamMember(project ${projectId})`);
+        })
+      );
+  }
+
+  private handleError(error: HttpErrorResponse, operation: string = 'operation') {
+    let errorMessage = `An unknown error occurred during ${operation}!`;
+    if (error.status === 0) {
+        errorMessage = `Network error or CORS issue during ${operation}. Could not connect to the backend or request was blocked. Please check backend server and CORS configuration.`;
+    } else if (error.error instanceof ErrorEvent) {
+      errorMessage = `Client-side/Network error during ${operation}: ${error.error.message}`;
+    } else {
+      errorMessage = `Backend error during ${operation}. Code: ${error.status}, Message: "${error.message || error.statusText}"`;
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+         errorMessage += ` Details: ${error.error.message}`;
+      } else if (typeof error.error === 'string' && error.error.length < 200 && error.error.length > 0) {
+         errorMessage += ` Server Error: ${error.error}`;
+      }
+    }
+    console.error(`TeamMemberService Error: ${operation} failed (full details):`, { message: errorMessage, errorObj: error });
+    return throwError(() => new Error(errorMessage));
+  }
+}
+
+
+// =============== src/app/budget-management/budget-management.component.ts (MODIFIED) ===============
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { BudgetDto } from '../models/budget.model';
+// MovieProjectResponse and ProjectService are no longer imported/used here
+import { BudgetService } from '../services/budget.service';
+import { finalize } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-budget-management',
+  templateUrl: './budget-management.component.html',
+  styleUrls: ['./budget-management.component.css']
+})
+export class BudgetManagementComponent implements OnInit {
+  movieProjectId: number | null = null;
+  // project: MovieProjectResponse | null = null; // REMOVED
+  projectTitleDisplay: string = ''; // To display "Project ID: X"
+
+  budgetExists: boolean = false;
+  showBudgetForm = false;
+  existingBudgetId: number | null = null;
+  isLoading = true;
+  errorMessage: string | null = null;
+
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    // private projectService: ProjectService, // REMOVED
+    private budgetService: BudgetService
+  ) {}
+
+  ngOnInit(): void {
+    console.log("BudgetManagementComponent: ngOnInit - Initializing.");
+    const idParam = this.route.snapshot.paramMap.get('projectId');
+    console.log("BudgetManagementComponent: ngOnInit - projectId from route:", idParam);
+    if (idParam) {
+      this.movieProjectId = +idParam;
+      this.projectTitleDisplay = `Project ID: ${this.movieProjectId}`; // Set display title
+      this.isLoading = true; // Ensure loading is true before checking budget
+      this.checkExistingBudget(this.movieProjectId);
+    } else {
+      this.errorMessage = "No project ID provided in the URL. Cannot manage budget.";
+      console.error(this.errorMessage);
+      this.isLoading = false;
+    }
+  }
+
+  checkExistingBudget(projectId: number): void {
+    console.log(`BudgetManagementComponent: checkExistingBudget for projectId: ${projectId}.`);
+    this.errorMessage = null; // Clear previous errors
+    this.budgetService.getBudgetByMovieProjectId(projectId).pipe(
+        finalize(() => {
+            console.log(`BudgetManagementComponent: getBudgetByMovieProjectId finalized. Setting isLoading to false.`);
+            this.isLoading = false;
+        })
+    ).subscribe({
+      next: budget => {
+        console.log("BudgetManagementComponent: Existing budget check response", budget);
+        if (budget) {
+          this.existingBudgetId = budget.id;
+          this.budgetExists = true;
+          this.showBudgetForm = false;
+        } else {
+          this.existingBudgetId = null;
+          this.budgetExists = false;
+        }
+      },
+      error: err => {
+        console.error("BudgetManagementComponent: Error checking existing budget", err);
+        this.errorMessage = err.message || `Could not verify existing budget. Please ensure backend is running, CORS is configured for budget endpoints, and the budget API is available.`;
+        this.budgetExists = false;
+        this.existingBudgetId = null;
+      },
+      complete: () => {
+        console.log("BudgetManagementComponent: getBudgetByMovieProjectId subscription completed.");
+      }
+    });
+  }
+
+  onBudgetCreated(createdBudget: BudgetDto): void {
+    console.log("BudgetManagementComponent: onBudgetCreated", createdBudget);
+    this.budgetExists = true;
+    this.existingBudgetId = createdBudget.id;
+    this.showBudgetForm = false;
+    this.errorMessage = null;
+    this.router.navigate(['/budgets', createdBudget.id]);
+  }
+
+   onBudgetCreationError(errorMessage: string): void {
+    console.warn("BudgetManagementComponent received budgetCreationError:", errorMessage);
+    // Displaying the error is handled by BudgetFormComponent
+    // this.errorMessage = errorMessage; // Optionally set page-level error
+  }
+
+  initiateCreateBudget(): void {
+    console.log("BudgetManagementComponent: initiateCreateBudget called.");
+    this.showBudgetForm = true;
+    this.errorMessage = null;
+  }
+
+  viewExistingBudget(): void {
+    console.log("BudgetManagementComponent: viewExistingBudget called for budgetId:", this.existingBudgetId);
+    if (this.existingBudgetId) {
+      this.router.navigate(['/budgets', this.existingBudgetId]);
+    } else {
+        this.errorMessage = "Cannot view budget: Budget ID is not available or budget does not exist.";
+        console.warn("Attempted to view budget without an existingBudgetId or when budgetExists is false.");
+    }
+  }
+
+  cancelCreation(): void {
+    console.log("BudgetManagementComponent: cancelCreation called.");
+    this.showBudgetForm = false;
+  }
+}
+
+// =============== src/app/budget-management/budget-management.component.html (MODIFIED) ===============
+// Content for src/app/budget-management/budget-management.component.html
+/*
+<div class="container mt-4">
+  <div *ngIf="isLoading" class="text-center my-5">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Loading budget details for {{ projectTitleDisplay }}...</p>
+  </div>
+
+  <div *ngIf="errorMessage && !isLoading" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <strong><i class="bi bi-exclamation-triangle-fill me-2"></i>Error:</strong> {{ errorMessage }}
+    <button type="button" class="btn-close" (click)="errorMessage = null" aria-label="Close"></button>
+  </div>
+
+  <div *ngIf="!isLoading && movieProjectId">
+    <h2 class="mb-4">
+      <i class="bi bi-briefcase-fill me-2"></i>Budget Management for: {{ projectTitleDisplay }}
+    </h2>
+
+    <div *ngIf="showBudgetForm">
+      <app-budget-form
+        [movieProjectId]="movieProjectId"
+        (budgetCreated)="onBudgetCreated($event)"
+        (budgetCreationError)="onBudgetCreationError($event)">
+      </app-budget-form>
+      <button class="btn btn-outline-secondary mt-3" (click)="cancelCreation()">
+        <i class="bi bi-x-circle me-1"></i> Cancel Creation
+      </button>
+    </div>
+
+    <div *ngIf="!showBudgetForm">
+      <div *ngIf="budgetExists" class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h5 class="card-title text-success">
+              <i class="bi bi-check-circle-fill me-2"></i>Budget Found
+          </h5>
+          <p class="card-text">
+            A budget (ID: {{ existingBudgetId }}) already exists for this project.
+          </p>
+          <button class="btn btn-primary me-2" (click)="viewExistingBudget()" [disabled]="!existingBudgetId">
+            <i class="bi bi-eye me-1"></i> View/Edit Budget Details
+          </button>
+          <button class="btn btn-outline-warning" (click)="initiateCreateBudget()">
+            <i class="bi bi-pencil-square me-1"></i> Create New Budget (Will error if one exists)
+          </button>
+           <p class="small text-muted mt-2">Note: Your backend currently prevents creating a new budget if one already exists for the project.</p>
+        </div>
+      </div>
+
+      <div *ngIf="!budgetExists" class="card shadow-sm mb-3">
+         <div class="card-body">
+          <h5 class="card-title text-info">
+              <i class="bi bi-info-circle-fill me-2"></i>No Budget Yet
+          </h5>
+          <p class="card-text">
+            No budget has been created for this project yet.
+          </p>
+          <button class="btn btn-success" (click)="initiateCreateBudget()">
+            <i class="bi bi-plus-circle me-1"></i> Create New Budget
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!isLoading && !movieProjectId && !errorMessage" class="alert alert-warning">
+    Project ID not available. Please ensure you have navigated from a project.
+    <a routerLink="/" class="btn btn-link">Go to Project Selection</a>
+  </div>
+</div>
+*/
+
+// =============== src/app/team-management/team-management.component.ts (MODIFIED) ===============
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { TeamMemberService } from '../services/team-member.service';
+// ProjectService and MovieProjectResponse are no longer imported/used here for fetching project details
+import { TeamMemberDto } from '../models/team.model';
+import { finalize } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-team-management',
+  templateUrl: './team-management.component.html',
+  styleUrls: ['./team-management.component.css']
+})
+export class TeamManagementComponent implements OnInit {
+  projectId!: number; // Assumed to be present from route
+  // project: MovieProjectResponse | null = null; // REMOVED
+  projectTitleDisplay: string = ''; // ADDED: To display "Project ID: X"
+
+  teamMembers: TeamMemberDto[] = [];
+  isLoading = true;
+  errorMessage: string | null = null;
+  showAddTeamMemberForm = false;
+
+  constructor(
+    private route: ActivatedRoute,
+    private teamMemberService: TeamMemberService
+    // private projectService: ProjectService // REMOVED
+  ) {}
+
+  ngOnInit(): void {
+    console.log("TeamManagementComponent: ngOnInit - Initializing.");
+    const idParam = this.route.snapshot.paramMap.get('projectId');
+    if (idParam) {
+      this.projectId = +idParam;
+      this.projectTitleDisplay = `Project ID: ${this.projectId}`; // Set display title
+      console.log("TeamManagementComponent: projectId from route:", this.projectId);
+      // this.loadProjectDetails(); // REMOVED: No longer fetching project details
+      this.loadTeamMembers();
+    } else {
+      this.errorMessage = "Project ID not found in URL. Cannot manage team.";
+      this.isLoading = false;
+      console.error("TeamManagementComponent: Project ID missing.");
+    }
+  }
+
+  // REMOVED: loadProjectDetails method
+
+  loadTeamMembers(): void {
+    this.isLoading = true;
+    this.errorMessage = null;
+    console.log(`TeamManagementComponent: loadTeamMembers for projectId: ${this.projectId}`);
+    this.teamMemberService.getTeamMembers(this.projectId).pipe(
+      finalize(() => {
+        console.log("TeamManagementComponent: loadTeamMembers finalized.");
+        this.isLoading = false;
+      })
+    ).subscribe({
+      next: (members) => {
+        console.log("TeamManagementComponent: Team members loaded", members);
+        this.teamMembers = members;
+      },
+      error: (err) => {
+        console.error("TeamManagementComponent: Error loading team members", err);
+        this.errorMessage = err.message || `Failed to load team members. Ensure backend is running, CORS is configured for team endpoints, and the API is available.`;
+        this.teamMembers = [];
+      }
+    });
+  }
+
+  onTeamMemberSaved(newMember: TeamMemberDto): void {
+    console.log("TeamManagementComponent: onTeamMemberSaved, new member:", newMember);
+    this.showAddTeamMemberForm = false;
+    this.loadTeamMembers(); // Refresh the list
+  }
+
+  toggleAddTeamMemberForm(): void {
+    this.showAddTeamMemberForm = !this.showAddTeamMemberForm;
+    if (this.showAddTeamMemberForm) {
+      this.errorMessage = null;
+    }
+  }
+}
+
+// =============== src/app/team-management/team-management.component.html (MODIFIED) ===============
+// Content for src/app/team-management/team-management.component.html
+/*
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">
+      <i class="bi bi-people-fill me-2"></i>Team Management for {{ projectTitleDisplay }}
+    </h2>
+    <button class="btn btn-primary" (click)="toggleAddTeamMemberForm()">
+      <i class="bi bi-plus-circle me-1"></i> {{ showAddTeamMemberForm ? 'Hide Form' : 'Add Team Member' }}
+    </button>
+  </div>
+
+  <div *ngIf="isLoading" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading team members...</span>
+    </div>
+    <p class="mt-2">Loading team members for {{ projectTitleDisplay }}...</p>
+  </div>
+
+  <div *ngIf="errorMessage && !isLoading" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+
+  <app-team-member-form
+    *ngIf="showAddTeamMemberForm && projectId"
+    [projectId]="projectId"
+    (teamMemberSaved)="onTeamMemberSaved($event)"
+    (cancelForm)="toggleAddTeamMemberForm()">
+  </app-team-member-form>
+
+  <div *ngIf="!isLoading && !showAddTeamMemberForm">
+    <div *ngIf="teamMembers.length > 0; else noTeamMembers" class="list-group shadow-sm">
+      <div *ngFor="let member of teamMembers" class="list-group-item list-group-item-action flex-column align-items-start mb-2 border">
+        <div class="d-flex w-100 justify-content-between">
+          <h5 class="mb-1">{{ member.name }} <span class="badge bg-info ms-2">{{ member.type }}</span></h5>
+          <small class="text-muted">ID: {{ member.id }}</small>
+        </div>
+        <p class="mb-1"><strong>Role:</strong> {{ member.role }}</p>
+        <p class="mb-1"><strong>Contact:</strong> {{ member.contactInfo }}</p>
+        <p *ngIf="member.type === 'CREW' && member.department" class="mb-1"><strong>Department:</strong> {{ member.department }}</p>
+        <p *ngIf="member.type === 'CAST' && member.agentInfo" class="mb-1"><strong>Agent:</strong> {{ member.agentInfo }}</p>
+        <div *ngIf="member.contractDetails" class="mt-2">
+            <h6>Contract Info (Simplified):</h6>
+            <pre class="bg-light p-2 rounded small">{{ member.contractDetails }}</pre>
+        </div>
+        <div *ngIf="member.availabilityNotes" class="mt-2">
+            <h6>Availability (Simplified):</h6>
+            <pre class="bg-light p-2 rounded small">{{ member.availabilityNotes }}</pre>
+        </div>
+        <small class="text-muted">Added: {{ member.createdAt | date:'short' }} | Updated: {{ member.updatedAt | date:'short' }}</small>
+      </div>
+    </div>
+    <ng-template #noTeamMembers>
+      <div *ngIf="!errorMessage" class="alert alert-info">No team members found for this project yet.</div>
+    </ng-template>
+  </div>
+</div>
+*/
+
+// Other files (app.component, project-form, budget-detail, etc.) remain largely as they were from the previous successful step.
+// The ProjectService.getProjectById method is now effectively unused by these management components.
+// Make sure all other necessary files (models, app.module, app-routing, etc.) are present as in previous versions.
