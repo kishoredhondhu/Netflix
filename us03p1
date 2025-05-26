@@ -1,1 +1,1052 @@
-.
+/*
+## Project Structure (Illustrative within this single file)
+
+src/
+├── app/
+│   ├── models/
+│   │   ├── project.model.ts
+│   │   ├── budget.model.ts
+│   │   └── team.model.ts  // NEW for US03
+│   ├── services/
+│   │   ├── project.service.ts
+│   │   ├── budget.service.ts
+│   │   └── team-member.service.ts // NEW for US03
+│   ├── budget-management/
+│   │   └── ...
+│   ├── budget-form/
+│   │   └── ...
+│   ├── budget-detail/
+│   │   └── ...
+│   ├── project-form/
+│   │   └── ...
+│   ├── team-management/  // NEW for US03
+│   │   ├── team-management.component.html
+│   │   ├── team-management.component.ts
+│   │   └── team-management.component.css
+│   ├── team-member-form/ // NEW for US03
+│   │   ├── team-member-form.component.html
+│   │   ├── team-member-form.component.ts
+│   │   └── team-member-form.component.css
+│   ├── app.component.html
+│   ├── app.component.ts
+│   ├── app.module.ts
+│   └── app-routing.module.ts
+├── main.ts
+├── index.html
+└── styles.css
+
+*/
+
+// =============== src/app/models/budget.model.ts ===============
+export enum ContractStatus { // This might be reused or a new one for TeamMember contracts
+    DRAFT = 'DRAFT',
+    SENT = 'SENT',
+    SIGNED = 'SIGNED',
+    ACTIVE = 'ACTIVE',
+    COMPLETED = 'COMPLETED',
+    EXPIRED = 'EXPIRED',
+    TERMINATED = 'TERMINATED'
+}
+
+export interface CreateBudgetRequestDto {
+  movieProjectId: number;
+  totalAllocatedAmount: number;
+  currency: string;
+}
+
+export interface BudgetDto {
+  id: number;
+  movieProjectId: number;
+  movieProjectTitle?: string;
+  totalAllocatedAmount: number;
+  currency: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  categories: BudgetCategoryDto[];
+}
+
+export interface CreateBudgetCategoryRequestDto {
+  name: string;
+  allocatedAmount: number;
+}
+
+export interface BudgetCategoryDto {
+  id: number;
+  name: string;
+  allocatedAmount: number;
+  lineItems: BudgetLineItemDto[];
+}
+
+export interface CreateBudgetLineItemRequestDto {
+  description: string;
+  estimatedCost: number;
+  notes?: string;
+}
+
+export interface BudgetLineItemDto {
+  id: number;
+  description: string;
+  estimatedCost: number;
+  actualCost?: number;
+  notes?: string;
+}
+
+// =============== src/app/models/project.model.ts ===============
+export interface CreateMovieProjectRequest {
+  title: string;
+  genre: string;
+  budget: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  keyTeamMembersInfo: string;
+  startFromScratch: boolean;
+}
+
+export interface MovieProjectResponse {
+  id: number;
+  title: string;
+  genre: string;
+  budget: number;
+  startDate: string;
+  endDate: string;
+  keyTeamMembersInfo: string;
+  startedFromScratch: boolean;
+  createdAt: string;
+  updatedAt: string;
+  projectDashboardStatus: string;
+}
+
+// =============== src/app/models/team.model.ts (NEW for US03) ===============
+export enum TeamMemberType {
+    CAST = 'CAST',
+    CREW = 'CREW'
+}
+
+export interface BasicContractInfo { // Simplified contract info
+    details?: string; // e.g., "Lead Actor Contract, 3 months"
+    salary?: number;
+    status?: ContractStatus; // Reusing ContractStatus enum
+}
+
+export interface AvailabilityInfo { // Simplified availability
+    notes?: string; // e.g., "Available Mon-Fri, 9am-5pm; Blocked out July 1-15"
+    // In a real app, this would be more structured, e.g., array of date ranges
+}
+
+export interface CreateTeamMemberRequestDto {
+    projectId: number;
+    name: string;
+    role: string;
+    type: TeamMemberType; // CAST or CREW
+    contactInfo: string; // e.g., email or phone
+    department?: string; // For CREW
+    agentInfo?: string; // For CAST
+    contractDetails?: string; // Simplified contract info
+    availabilityNotes?: string; // Simplified availability info
+}
+
+export interface TeamMemberDto {
+    id: number;
+    projectId: number;
+    name: string;
+    role: string;
+    type: TeamMemberType;
+    contactInfo: string;
+    department?: string;
+    agentInfo?: string;
+    contractDetails?: string;
+    availabilityNotes?: string;
+    // In a more complex app, contracts and availability might be separate lists of objects
+    // contracts: ContractDto[];
+    // availability: AvailabilitySlotDto[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+
+// =============== src/app/services/budget.service.ts ===============
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError, of, timer } from 'rxjs';
+import { catchError, timeout, switchMap } from 'rxjs/operators';
+// Models are imported in their respective files
+
+@Injectable({
+  providedIn: 'root'
+})
+export class BudgetService {
+  private budgetsApiUrl = 'http://localhost:8081/api/v1/budgets';
+  private readonly REQUEST_TIMEOUT = 30000;
+
+  constructor(private http: HttpClient) { }
+
+  createBudgetForProject(data: CreateBudgetRequestDto): Observable<BudgetDto> {
+    console.log('BudgetService: createBudgetForProject called with data:', data);
+    return this.http.post<BudgetDto>(`${this.budgetsApiUrl}/project`, data)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error('BudgetService: createBudgetForProject request timed out.');
+            return throwError(() => new Error('Request to create budget timed out. Please try again.'));
+          }
+          return this.handleError(err, 'createBudgetForProject');
+        })
+      );
+  }
+
+  getBudgetById(budgetId: number): Observable<BudgetDto> {
+    console.log(`BudgetService: getBudgetById called for budgetId: ${budgetId}`);
+    return this.http.get<BudgetDto>(`${this.budgetsApiUrl}/${budgetId}`)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`BudgetService: getBudgetById request for ${budgetId} timed out.`);
+            return throwError(() => new Error(`Request to get budget ${budgetId} timed out.`));
+          }
+          return this.handleError(err, `getBudgetById(${budgetId})`);
+        })
+      );
+  }
+
+  getBudgetByMovieProjectId(movieProjectId: number): Observable<BudgetDto | null> {
+    console.log(`BudgetService: getBudgetByMovieProjectId called for movieProjectId: ${movieProjectId}`);
+    return this.http.get<BudgetDto>(`${this.budgetsApiUrl}/project/${movieProjectId}`).pipe(
+      timeout(this.REQUEST_TIMEOUT),
+      catchError(error => {
+        if (error.name === 'TimeoutError') {
+          console.error(`BudgetService: getBudgetByMovieProjectId request for ${movieProjectId} timed out.`);
+          return throwError(() => new Error(`Request to get budget for project ${movieProjectId} timed out.`));
+        }
+        if (error.status === 404) {
+          console.log(`BudgetService: No budget found for movieProjectId: ${movieProjectId}`);
+          return of(null);
+        }
+        return this.handleError(error, `getBudgetByMovieProjectId(${movieProjectId})`);
+      })
+    );
+  }
+
+  addCategoryToBudget(budgetId: number, categoryData: CreateBudgetCategoryRequestDto): Observable<BudgetCategoryDto> {
+    console.log(`BudgetService: addCategoryToBudget called for budgetId: ${budgetId} with data:`, categoryData);
+    return this.http.post<BudgetCategoryDto>(`${this.budgetsApiUrl}/${budgetId}/categories`, categoryData)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`BudgetService: addCategoryToBudget request for budget ${budgetId} timed out.`);
+            return throwError(() => new Error(`Request to add category to budget ${budgetId} timed out.`));
+          }
+          return this.handleError(err, `addCategoryToBudget(budget ${budgetId})`);
+        })
+      );
+  }
+
+  addLineItemToCategory(categoryId: number, lineItemData: CreateBudgetLineItemRequestDto): Observable<BudgetLineItemDto> {
+    console.log(`BudgetService: addLineItemToCategory called for categoryId: ${categoryId} with data:`, lineItemData);
+    return this.http.post<BudgetLineItemDto>(`${this.budgetsApiUrl}/categories/${categoryId}/lineitems`, lineItemData)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`BudgetService: addLineItemToCategory request for category ${categoryId} timed out.`);
+            return throwError(() => new Error(`Request to add line item to category ${categoryId} timed out.`));
+          }
+          return this.handleError(err, `addLineItemToCategory(category ${categoryId})`);
+        })
+      );
+  }
+
+  private handleError(error: HttpErrorResponse, operation: string = 'operation') {
+    let errorMessage = `An unknown error occurred during ${operation}!`;
+    if (error.status === 0) {
+        errorMessage = `Network error or CORS issue during ${operation}. Could not connect to the backend or request was blocked. Please check backend server and CORS configuration.`;
+    } else if (error.error instanceof ErrorEvent) {
+      errorMessage = `Client-side/Network error during ${operation}: ${error.error.message}`;
+    } else {
+      errorMessage = `Backend error during ${operation}. Code: ${error.status}, Message: "${error.message || error.statusText}"`;
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+         errorMessage += ` Details: ${error.error.message}`;
+      } else if (typeof error.error === 'string' && error.error.length < 200 && error.error.length > 0) {
+         errorMessage += ` Server Error: ${error.error}`;
+      }
+    }
+    console.error(`BudgetService Error: ${operation} failed (full details):`, { message: errorMessage, errorObj: error });
+    return throwError(() => new Error(errorMessage));
+  }
+}
+
+// =============== src/app/services/project.service.ts ===============
+// (Assumed to be working correctly for GET /projects/{id} from previous fixes)
+// No changes needed here for US03 directly, but TeamManagementComponent will use it.
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError, of, timer } from 'rxjs';
+import { catchError, timeout, switchMap } from 'rxjs/operators';
+import { CreateMovieProjectRequest, MovieProjectResponse } from '../models/project.model';
+
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ProjectService {
+  private apiUrl = 'http://localhost:8081/api/v1/projects';
+  private readonly REQUEST_TIMEOUT = 30000;
+
+  constructor(private http: HttpClient) { }
+
+  createProject(projectData: CreateMovieProjectRequest): Observable<MovieProjectResponse> {
+    console.log('ProjectService: createProject called with data:', projectData);
+    return this.http.post<MovieProjectResponse>(this.apiUrl, projectData)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error('ProjectService: createProject request timed out.');
+            return throwError(() => new Error('Request to create project timed out. Please try again.'));
+          }
+          return this.handleError(err, 'createProject');
+        })
+      );
+  }
+
+  getProjectById(projectId: number): Observable<MovieProjectResponse> {
+    console.log(`ProjectService: getProjectById called for projectId: ${projectId}.`);
+    return this.http.get<MovieProjectResponse>(`${this.apiUrl}/${projectId}`)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`ProjectService: getProjectById request for ${projectId} timed out.`);
+            return throwError(() => new Error(`Request to get project ${projectId} timed out.`));
+          }
+          return this.handleError(err, `getProjectById(${projectId})`);
+        })
+      );
+  }
+
+  private handleError(error: HttpErrorResponse, operation: string = 'operation') {
+    let errorMessage = `An unknown error occurred during ${operation}!`;
+     if (error.status === 0) {
+        errorMessage = `Network error or CORS issue during ${operation}. Could not connect to the backend or request was blocked. Please check backend server and CORS configuration.`;
+    } else if (error.error instanceof ErrorEvent) {
+      errorMessage = `Client-side/Network error during ${operation}: ${error.error.message}`;
+    } else {
+      errorMessage = `Backend error during ${operation}. Code: ${error.status}, Message: "${error.message || error.statusText || 'Server error'}"`;
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+         errorMessage += ` Details: ${error.error.message}`;
+      } else if (typeof error.error === 'string' && error.error.length < 200 && error.error.length > 0) {
+         errorMessage += ` Server Error: ${error.error}`;
+      }
+    }
+    console.error(`ProjectService Error: ${operation} failed (full details):`, { message: errorMessage, errorObj: error });
+    return throwError(() => new Error(errorMessage));
+  }
+}
+
+
+// =============== src/app/services/team-member.service.ts (NEW for US03) ===============
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError, timeout } from 'rxjs/operators';
+import { TeamMemberDto, CreateTeamMemberRequestDto } from '../models/team.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class TeamMemberService {
+  private apiUrl = 'http://localhost:8081/api/v1'; // Base API URL
+  private readonly REQUEST_TIMEOUT = 30000; // 30 seconds
+
+  constructor(private http: HttpClient) { }
+
+  getTeamMembers(projectId: number): Observable<TeamMemberDto[]> {
+    console.log(`TeamMemberService: getTeamMembers called for projectId: ${projectId}`);
+    return this.http.get<TeamMemberDto[]>(`${this.apiUrl}/projects/${projectId}/team-members`)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`TeamMemberService: getTeamMembers for project ${projectId} timed out.`);
+            return throwError(() => new Error(`Request to get team members for project ${projectId} timed out.`));
+          }
+          return this.handleError(err, `getTeamMembers(project ${projectId})`);
+        })
+      );
+  }
+
+  addTeamMember(projectId: number, memberData: CreateTeamMemberRequestDto): Observable<TeamMemberDto> {
+    console.log(`TeamMemberService: addTeamMember called for projectId: ${projectId} with data:`, memberData);
+    // Ensure projectId is part of the DTO or handled by the endpoint structure
+    const dataToSend = { ...memberData, projectId }; // Ensure projectId is in the payload if backend expects it
+    return this.http.post<TeamMemberDto>(`${this.apiUrl}/projects/${projectId}/team-members`, dataToSend)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`TeamMemberService: addTeamMember for project ${projectId} timed out.`);
+            return throwError(() => new Error(`Request to add team member for project ${projectId} timed out.`));
+          }
+          return this.handleError(err, `addTeamMember(project ${projectId})`);
+        })
+      );
+  }
+
+  // Placeholder for future:
+  // updateTeamMember(memberId: number, memberData: Partial<TeamMemberDto>): Observable<TeamMemberDto> { ... }
+  // deleteTeamMember(memberId: number): Observable<void> { ... }
+  // addContractToTeamMember(memberId: number, contractData: CreateContractDto): Observable<ContractDto> { ... }
+  // updateAvailabilityForTeamMember(memberId: number, availabilityData: AvailabilityDto): Observable<AvailabilityDto> { ... }
+
+
+  private handleError(error: HttpErrorResponse, operation: string = 'operation') {
+    let errorMessage = `An unknown error occurred during ${operation}!`;
+    if (error.status === 0) {
+        errorMessage = `Network error or CORS issue during ${operation}. Could not connect to the backend or request was blocked. Please check backend server and CORS configuration.`;
+    } else if (error.error instanceof ErrorEvent) {
+      errorMessage = `Client-side/Network error during ${operation}: ${error.error.message}`;
+    } else {
+      errorMessage = `Backend error during ${operation}. Code: ${error.status}, Message: "${error.message || error.statusText}"`;
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+         errorMessage += ` Details: ${error.error.message}`;
+      } else if (typeof error.error === 'string' && error.error.length < 200 && error.error.length > 0) {
+         errorMessage += ` Server Error: ${error.error}`;
+      }
+    }
+    console.error(`TeamMemberService Error: ${operation} failed (full details):`, { message: errorMessage, errorObj: error });
+    return throwError(() => new Error(errorMessage));
+  }
+}
+
+
+// =============== src/app/team-member-form/team-member-form.component.ts (NEW for US03) ===============
+import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { TeamMemberType, CreateTeamMemberRequestDto, TeamMemberDto } from '../models/team.model';
+import { TeamMemberService } from '../services/team-member.service';
+import { finalize } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-team-member-form',
+  templateUrl: './team-member-form.component.html',
+  styleUrls: ['./team-member-form.component.css']
+})
+export class TeamMemberFormComponent implements OnInit {
+  @Input() projectId!: number;
+  // @Input() teamMemberToEdit: TeamMemberDto | null = null; // For future edit functionality
+  @Output() teamMemberSaved = new EventEmitter<TeamMemberDto>(); // Emits on successful save (add/edit)
+  @Output() cancelForm = new EventEmitter<void>();
+
+  teamMemberForm!: FormGroup;
+  teamMemberTypes = Object.values(TeamMemberType); // For dropdown
+  isLoading = false;
+  submissionMessage: string | null = null;
+  isError = false;
+
+  constructor(
+    private fb: FormBuilder,
+    private teamMemberService: TeamMemberService
+  ) {}
+
+  ngOnInit(): void {
+    if (!this.projectId) {
+      console.error("TeamMemberFormComponent: ProjectID is required!");
+      this.submissionMessage = "Project ID is missing; cannot save team member.";
+      this.isError = true;
+    }
+    this.initForm();
+    // if (this.teamMemberToEdit) {
+    //   this.teamMemberForm.patchValue(this.teamMemberToEdit);
+    // }
+  }
+
+  initForm(): void {
+    this.teamMemberForm = this.fb.group({
+      name: ['', [Validators.required, Validators.maxLength(100)]],
+      role: ['', [Validators.required, Validators.maxLength(100)]],
+      type: [TeamMemberType.CREW, Validators.required],
+      contactInfo: ['', [Validators.required, Validators.maxLength(100)]],
+      department: ['', Validators.maxLength(100)], // Conditional
+      agentInfo: ['', Validators.maxLength(100)],   // Conditional
+      contractDetails: ['', Validators.maxLength(1000)], // Simple text field for now
+      availabilityNotes: ['', Validators.maxLength(1000)] // Simple text field for now
+    });
+
+    // Conditional validation/visibility can be handled in template or with valueChanges listeners
+    this.teamMemberForm.get('type')?.valueChanges.subscribe(type => {
+      const departmentControl = this.teamMemberForm.get('department');
+      const agentInfoControl = this.teamMemberForm.get('agentInfo');
+      if (type === TeamMemberType.CREW) {
+        departmentControl?.setValidators([Validators.required, Validators.maxLength(100)]);
+        agentInfoControl?.clearValidators();
+      } else if (type === TeamMemberType.CAST) {
+        agentInfoControl?.setValidators([Validators.required, Validators.maxLength(100)]);
+        departmentControl?.clearValidators();
+      } else {
+        departmentControl?.clearValidators();
+        agentInfoControl?.clearValidators();
+      }
+      departmentControl?.updateValueAndValidity();
+      agentInfoControl?.updateValueAndValidity();
+    });
+  }
+
+  get type() { return this.teamMemberForm.get('type'); }
+
+  onSubmit(): void {
+    this.teamMemberForm.markAllAsTouched();
+    if (this.teamMemberForm.invalid || !this.projectId) {
+      this.submissionMessage = "Form is invalid or Project ID is missing. Please check all fields.";
+      this.isError = true;
+      return;
+    }
+
+    this.isLoading = true;
+    this.submissionMessage = null;
+    this.isError = false;
+
+    const formData = this.teamMemberForm.value;
+    const requestData: CreateTeamMemberRequestDto = {
+      projectId: this.projectId,
+      name: formData.name,
+      role: formData.role,
+      type: formData.type,
+      contactInfo: formData.contactInfo,
+      department: formData.type === TeamMemberType.CREW ? formData.department : undefined,
+      agentInfo: formData.type === TeamMemberType.CAST ? formData.agentInfo : undefined,
+      contractDetails: formData.contractDetails,
+      availabilityNotes: formData.availabilityNotes
+    };
+
+    console.log("TeamMemberFormComponent: Submitting team member data:", requestData);
+    // Assuming addTeamMember handles both create and update based on an ID in future
+    // if (this.teamMemberToEdit) {
+      // Call update service method
+    // } else {
+      this.teamMemberService.addTeamMember(this.projectId, requestData).pipe(
+        finalize(() => {
+          console.log("TeamMemberFormComponent: addTeamMember finalized.");
+          this.isLoading = false;
+        })
+      ).subscribe({
+        next: (savedMember) => {
+          console.log("TeamMemberFormComponent: Team member saved successfully", savedMember);
+          this.submissionMessage = `Team member "${savedMember.name}" saved successfully!`;
+          this.isError = false;
+          this.teamMemberSaved.emit(savedMember);
+          this.teamMemberForm.reset({ type: TeamMemberType.CREW }); // Reset form
+        },
+        error: (err) => {
+          console.error("TeamMemberFormComponent: Error saving team member", err);
+          this.submissionMessage = err.message || "Failed to save team member.";
+          this.isError = true;
+        }
+      });
+    // }
+  }
+
+  onCancel(): void {
+    this.cancelForm.emit();
+  }
+}
+
+// =============== src/app/team-member-form/team-member-form.component.html (NEW for US03) ===============
+// Content for src/app/team-member-form/team-member-form.component.html
+/*
+<div class="card shadow-sm mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">Add New Team Member</h5>
+    </div>
+  <div class="card-body">
+    <div *ngIf="submissionMessage" class="alert" [ngClass]="isError ? 'alert-danger' : 'alert-success'">
+      {{ submissionMessage }}
+    </div>
+
+    <form [formGroup]="teamMemberForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="memberName" class="form-label">Name <span class="text-danger">*</span></label>
+          <input id="memberName" type="text" formControlName="name" class="form-control"
+                 [ngClass]="{ 'is-invalid': teamMemberForm.get('name')?.invalid && teamMemberForm.get('name')?.touched }">
+          <div *ngIf="teamMemberForm.get('name')?.invalid && teamMemberForm.get('name')?.touched" class="invalid-feedback">
+            <div *ngIf="teamMemberForm.get('name')?.errors?.['required']">Name is required.</div>
+            <div *ngIf="teamMemberForm.get('name')?.errors?.['maxlength']">Name is too long.</div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="memberRole" class="form-label">Role <span class="text-danger">*</span></label>
+          <input id="memberRole" type="text" formControlName="role" class="form-control"
+                 [ngClass]="{ 'is-invalid': teamMemberForm.get('role')?.invalid && teamMemberForm.get('role')?.touched }">
+          <div *ngIf="teamMemberForm.get('role')?.invalid && teamMemberForm.get('role')?.touched" class="invalid-feedback">
+            <div *ngIf="teamMemberForm.get('role')?.errors?.['required']">Role is required.</div>
+            <div *ngIf="teamMemberForm.get('role')?.errors?.['maxlength']">Role is too long.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="memberType" class="form-label">Type <span class="text-danger">*</span></label>
+          <select id="memberType" formControlName="type" class="form-select"
+                  [ngClass]="{ 'is-invalid': type?.invalid && type?.touched }">
+            <option *ngFor="let memberType of teamMemberTypes" [value]="memberType">
+              {{ memberType }}
+            </option>
+          </select>
+          <div *ngIf="type?.invalid && type?.touched" class="invalid-feedback">
+            Type is required.
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="memberContact" class="form-label">Contact Info (Email/Phone) <span class="text-danger">*</span></label>
+          <input id="memberContact" type="text" formControlName="contactInfo" class="form-control"
+                 [ngClass]="{ 'is-invalid': teamMemberForm.get('contactInfo')?.invalid && teamMemberForm.get('contactInfo')?.touched }">
+          <div *ngIf="teamMemberForm.get('contactInfo')?.invalid && teamMemberForm.get('contactInfo')?.touched" class="invalid-feedback">
+            <div *ngIf="teamMemberForm.get('contactInfo')?.errors?.['required']">Contact info is required.</div>
+            <div *ngIf="teamMemberForm.get('contactInfo')?.errors?.['maxlength']">Contact info is too long.</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="row">
+        <div *ngIf="type?.value === 'CREW'" class="col-md-6 mb-3">
+          <label for="memberDepartment" class="form-label">Department <span *ngIf="type?.value === 'CREW'" class="text-danger">*</span></label>
+          <input id="memberDepartment" type="text" formControlName="department" class="form-control"
+                 [ngClass]="{ 'is-invalid': teamMemberForm.get('department')?.invalid && teamMemberForm.get('department')?.touched }">
+          <div *ngIf="teamMemberForm.get('department')?.invalid && teamMemberForm.get('department')?.touched" class="invalid-feedback">
+            <div *ngIf="teamMemberForm.get('department')?.errors?.['required']">Department is required for Crew.</div>
+             <div *ngIf="teamMemberForm.get('department')?.errors?.['maxlength']">Department name is too long.</div>
+          </div>
+        </div>
+
+        <div *ngIf="type?.value === 'CAST'" class="col-md-6 mb-3">
+          <label for="memberAgent" class="form-label">Agent Info <span *ngIf="type?.value === 'CAST'" class="text-danger">*</span></label>
+          <input id="memberAgent" type="text" formControlName="agentInfo" class="form-control"
+                 [ngClass]="{ 'is-invalid': teamMemberForm.get('agentInfo')?.invalid && teamMemberForm.get('agentInfo')?.touched }">
+          <div *ngIf="teamMemberForm.get('agentInfo')?.invalid && teamMemberForm.get('agentInfo')?.touched" class="invalid-feedback">
+            <div *ngIf="teamMemberForm.get('agentInfo')?.errors?.['required']">Agent Info is required for Cast.</div>
+            <div *ngIf="teamMemberForm.get('agentInfo')?.errors?.['maxlength']">Agent info is too long.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="memberContract" class="form-label">Contract Details (Simplified)</label>
+        <textarea id="memberContract" formControlName="contractDetails" class="form-control" rows="3" placeholder="e.g., Salary, duration, key terms..."></textarea>
+         <div *ngIf="teamMemberForm.get('contractDetails')?.invalid && teamMemberForm.get('contractDetails')?.touched" class="invalid-feedback">
+            <div *ngIf="teamMemberForm.get('contractDetails')?.errors?.['maxlength']">Contract details are too long.</div>
+         </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="memberAvailability" class="form-label">Availability Notes (Simplified)</label>
+        <textarea id="memberAvailability" formControlName="availabilityNotes" class="form-control" rows="3" placeholder="e.g., Available Mon-Fri, 9am-5pm; Blocked out July 1-15..."></textarea>
+        <div *ngIf="teamMemberForm.get('availabilityNotes')?.invalid && teamMemberForm.get('availabilityNotes')?.touched" class="invalid-feedback">
+            <div *ngIf="teamMemberForm.get('availabilityNotes')?.errors?.['maxlength']">Availability notes are too long.</div>
+         </div>
+      </div>
+
+      <div class="d-flex justify-content-end">
+        <button type="button" class="btn btn-outline-secondary me-2" (click)="onCancel()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="teamMemberForm.invalid || isLoading || !projectId">
+          <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-1"></span>
+          {{ isLoading ? 'Saving...' : 'Save Team Member' }}
+          </button>
+      </div>
+    </form>
+  </div>
+</div>
+*/
+
+// =============== src/app/team-member-form/team-member-form.component.css (NEW for US03) ===============
+// Content for src/app/team-member-form/team-member-form.component.css
+/*
+.is-invalid {
+  border-color: #dc3545; /* Bootstrap danger color */
+}
+.invalid-feedback {
+  display: block;
+}
+*/
+
+
+// =============== src/app/team-management/team-management.component.ts (NEW for US03) ===============
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { TeamMemberService } from '../services/team-member.service';
+import { ProjectService } from '../services/project.service'; // To get project title
+import { TeamMemberDto } from '../models/team.model';
+import { MovieProjectResponse } from '../models/project.model';
+import { finalize } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-team-management',
+  templateUrl: './team-management.component.html',
+  styleUrls: ['./team-management.component.css']
+})
+export class TeamManagementComponent implements OnInit {
+  projectId!: number;
+  project: MovieProjectResponse | null = null;
+  teamMembers: TeamMemberDto[] = [];
+  isLoading = true;
+  errorMessage: string | null = null;
+  showAddTeamMemberForm = false;
+
+  constructor(
+    private route: ActivatedRoute,
+    private teamMemberService: TeamMemberService,
+    private projectService: ProjectService // For project title
+  ) {}
+
+  ngOnInit(): void {
+    console.log("TeamManagementComponent: ngOnInit - Initializing.");
+    const idParam = this.route.snapshot.paramMap.get('projectId');
+    if (idParam) {
+      this.projectId = +idParam;
+      console.log("TeamManagementComponent: projectId from route:", this.projectId);
+      this.loadProjectDetails();
+      this.loadTeamMembers();
+    } else {
+      this.errorMessage = "Project ID not found in URL.";
+      this.isLoading = false;
+      console.error("TeamManagementComponent: Project ID missing.");
+    }
+  }
+
+  loadProjectDetails(): void {
+    console.log(`TeamManagementComponent: loadProjectDetails for projectId: ${this.projectId}`);
+    // isLoading is already true or will be set by loadTeamMembers
+    this.projectService.getProjectById(this.projectId).subscribe({
+      next: (project) => {
+        console.log("TeamManagementComponent: Project details loaded", project);
+        this.project = project;
+      },
+      error: (err) => {
+        console.error("TeamManagementComponent: Error loading project details", err);
+        // Don't overwrite main error message if team members also fail to load
+        if (!this.errorMessage) {
+            this.errorMessage = `Failed to load project details: ${err.message}`;
+        }
+      }
+    });
+  }
+
+  loadTeamMembers(): void {
+    this.isLoading = true;
+    this.errorMessage = null;
+    console.log(`TeamManagementComponent: loadTeamMembers for projectId: ${this.projectId}`);
+    this.teamMemberService.getTeamMembers(this.projectId).pipe(
+      finalize(() => {
+        console.log("TeamManagementComponent: loadTeamMembers finalized.");
+        this.isLoading = false;
+      })
+    ).subscribe({
+      next: (members) => {
+        console.log("TeamManagementComponent: Team members loaded", members);
+        this.teamMembers = members;
+      },
+      error: (err) => {
+        console.error("TeamManagementComponent: Error loading team members", err);
+        this.errorMessage = `Failed to load team members: ${err.message}`;
+        this.teamMembers = []; // Ensure it's an empty array on error
+      }
+    });
+  }
+
+  onTeamMemberSaved(newMember: TeamMemberDto): void {
+    console.log("TeamManagementComponent: onTeamMemberSaved, new member:", newMember);
+    this.showAddTeamMemberForm = false; // Hide form
+    this.loadTeamMembers(); // Refresh the list
+    // Or, for better UX, push to the existing array if backend guarantees unique ID
+    // this.teamMembers.push(newMember);
+  }
+
+  toggleAddTeamMemberForm(): void {
+    this.showAddTeamMemberForm = !this.showAddTeamMemberForm;
+    if (this.showAddTeamMemberForm) {
+      this.errorMessage = null; // Clear page errors when showing form
+    }
+  }
+}
+
+// =============== src/app/team-management/team-management.component.html (NEW for US03) ===============
+// Content for src/app/team-management/team-management.component.html
+/*
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">
+      <i class="bi bi-people-fill me-2"></i>Team Management for {{ project?.title || ('Project ID: ' + projectId) }}
+    </h2>
+    <button class="btn btn-primary" (click)="toggleAddTeamMemberForm()">
+      <i class="bi bi-plus-circle me-1"></i> {{ showAddTeamMemberForm ? 'Hide Form' : 'Add Team Member' }}
+    </button>
+  </div>
+
+  <div *ngIf="isLoading" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading team members...</span>
+    </div>
+    <p class="mt-2">Loading team members...</p>
+  </div>
+
+  <div *ngIf="errorMessage && !isLoading" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+
+  <app-team-member-form
+    *ngIf="showAddTeamMemberForm && projectId"
+    [projectId]="projectId"
+    (teamMemberSaved)="onTeamMemberSaved($event)"
+    (cancelForm)="toggleAddTeamMemberForm()">
+  </app-team-member-form>
+
+  <div *ngIf="!isLoading && !showAddTeamMemberForm">
+    <div *ngIf="teamMembers.length > 0; else noTeamMembers" class="list-group shadow-sm">
+      <div *ngFor="let member of teamMembers" class="list-group-item list-group-item-action flex-column align-items-start mb-2 border">
+        <div class="d-flex w-100 justify-content-between">
+          <h5 class="mb-1">{{ member.name }} <span class="badge bg-info ms-2">{{ member.type }}</span></h5>
+          <small class="text-muted">ID: {{ member.id }}</small>
+        </div>
+        <p class="mb-1"><strong>Role:</strong> {{ member.role }}</p>
+        <p class="mb-1"><strong>Contact:</strong> {{ member.contactInfo }}</p>
+        <p *ngIf="member.type === 'CREW' && member.department" class="mb-1"><strong>Department:</strong> {{ member.department }}</p>
+        <p *ngIf="member.type === 'CAST' && member.agentInfo" class="mb-1"><strong>Agent:</strong> {{ member.agentInfo }}</p>
+        <div *ngIf="member.contractDetails" class="mt-2">
+            <h6>Contract Info (Simplified):</h6>
+            <pre class="bg-light p-2 rounded small">{{ member.contractDetails }}</pre>
+        </div>
+        <div *ngIf="member.availabilityNotes" class="mt-2">
+            <h6>Availability (Simplified):</h6>
+            <pre class="bg-light p-2 rounded small">{{ member.availabilityNotes }}</pre>
+        </div>
+        <small class="text-muted">Added: {{ member.createdAt | date:'short' }} | Updated: {{ member.updatedAt | date:'short' }}</small>
+        </div>
+    </div>
+    <ng-template #noTeamMembers>
+      <div *ngIf="!errorMessage" class="alert alert-info">No team members found for this project yet.</div>
+    </ng-template>
+  </div>
+</div>
+*/
+
+// =============== src/app/team-management/team-management.component.css (NEW for US03) ===============
+// Content for src/app/team-management/team-management.component.css
+/*
+.list-group-item h5 .badge {
+  font-size: 0.75rem;
+  vertical-align: middle;
+}
+pre {
+  white-space: pre-wrap; /* Allow long text to wrap in pre tags */
+  word-break: break-word;
+}
+*/
+
+// =============== src/app/app-routing.module.ts ===============
+// (Add the new route for TeamManagementComponent)
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { ProjectFormComponent } from './project-form/project-form.component';
+import { BudgetManagementComponent } from './budget-management/budget-management.component';
+import { BudgetDetailComponent } from './budget-detail/budget-detail.component';
+import { TeamManagementComponent } from './team-management/team-management.component'; // ADDED
+
+const routes: Routes = [
+  { path: 'create-project', component: ProjectFormComponent, title: 'Create New Project' },
+  { path: 'project/:projectId/budget', component: BudgetManagementComponent, title: 'Manage Project Budget' },
+  { path: 'project/:projectId/team', component: TeamManagementComponent, title: 'Manage Team' }, // ADDED ROUTE
+  { path: 'budgets/:budgetId', component: BudgetDetailComponent, title: 'Budget Details' },
+  { path: '', redirectTo: '/create-project', pathMatch: 'full' },
+  { path: '**', redirectTo: '/create-project' }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+
+
+// =============== src/app/app.module.ts ===============
+// (Declare new components)
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { ReactiveFormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+import { CommonModule } from '@angular/common';
+
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+
+import { ProjectFormComponent } from './project-form/project-form.component';
+import { BudgetManagementComponent } from './budget-management/budget-management.component';
+import { BudgetFormComponent } from './budget-form/budget-form.component';
+import { BudgetDetailComponent } from './budget-detail/budget-detail.component';
+import { TeamManagementComponent } from './team-management/team-management.component'; // ADDED
+import { TeamMemberFormComponent } from './team-member-form/team-member-form.component'; // ADDED
+
+// Services are providedIn: 'root'
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    ProjectFormComponent,
+    BudgetManagementComponent,
+    BudgetFormComponent,
+    BudgetDetailComponent,
+    TeamManagementComponent, // ADDED
+    TeamMemberFormComponent  // ADDED
+  ],
+  imports: [
+    BrowserModule,
+    CommonModule,
+    ReactiveFormsModule,
+    HttpClientModule,
+    AppRoutingModule
+  ],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+
+// =============== src/app/app.component.ts ===============
+// (No major changes needed here for US03, beyond the navbar link which is handled in app.component.html)
+import { Component, OnDestroy } from '@angular/core';
+import { MovieProjectResponse } from './models/project.model';
+import { Router } from '@angular/router';
+import { ProjectFormComponent } from './project-form/project-form.component';
+import { Subscription } from 'rxjs';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
+})
+export class AppComponent implements OnDestroy {
+  title = 'Movie Production Management System';
+  submissionMessage: string | null = null;
+  isError: boolean = false;
+  lastCreatedProjectId: number | null = null;
+
+  private projectSuccessfullyCreatedSub: Subscription | undefined;
+
+  constructor(
+    private router: Router
+  ) {
+    console.log('AppComponent constructor called - Router injected.');
+  }
+
+  onActivate(componentRef: any): void {
+    console.log('AppComponent: Router outlet activated with component:', componentRef.constructor.name);
+
+    if (this.projectSuccessfullyCreatedSub) {
+      this.projectSuccessfullyCreatedSub.unsubscribe();
+      this.projectSuccessfullyCreatedSub = undefined;
+    }
+
+    if (componentRef instanceof ProjectFormComponent) {
+      console.log('AppComponent: ProjectFormComponent activated. Subscribing to projectSuccessfullyCreated event.');
+      if (componentRef.projectSuccessfullyCreated) {
+        this.projectSuccessfullyCreatedSub = componentRef.projectSuccessfullyCreated.subscribe(
+          (projectResponse: MovieProjectResponse) => {
+            this.onProjectSuccessfullyCreated(projectResponse);
+          }
+        );
+      } else {
+        console.warn('AppComponent: projectSuccessfullyCreated EventEmitter not found on ProjectFormComponent instance.');
+      }
+    }
+  }
+
+  onProjectSuccessfullyCreated(response: MovieProjectResponse): void {
+    console.log('AppComponent: onProjectSuccessfullyCreated received:', response);
+    this.submissionMessage = `Project "${response.title}" (ID: ${response.id}) created successfully! Status: ${response.projectDashboardStatus || 'N/A'}. You can now manage its budget and team via the navbar.`;
+    this.isError = false;
+    this.lastCreatedProjectId = response.id;
+  }
+
+  onProjectCreationError(errorMessage: string): void {
+    console.error('AppComponent: onProjectCreationError received:', errorMessage);
+    this.submissionMessage = errorMessage;
+    this.isError = true;
+    this.lastCreatedProjectId = null;
+  }
+
+  ngOnDestroy() {
+    if (this.projectSuccessfullyCreatedSub) {
+      this.projectSuccessfullyCreatedSub.unsubscribe();
+    }
+  }
+}
+
+// =============== src/app/app.component.html ===============
+// (Add navbar link for Team Management)
+// Content for src/app/app.component.html
+/*
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
+  <div class="container-fluid">
+    <a class="navbar-brand" routerLink="/">
+      <i class="bi bi-film me-2"></i>MovieProdSys
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/create-project" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <i class="bi bi-plus-square-dotted me-1"></i>Create Project
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="lastCreatedProjectId">
+          <a class="nav-link" [routerLink]="['/project', lastCreatedProjectId, 'budget']" routerLinkActive="active">
+            <i class="bi bi-cash-coin me-1"></i>Manage Budget (Project #{{ lastCreatedProjectId }})
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="lastCreatedProjectId"> <a class="nav-link" [routerLink]="['/project', lastCreatedProjectId, 'team']" routerLinkActive="active">
+            <i class="bi bi-people me-1"></i>Manage Team (Project #{{ lastCreatedProjectId }})
+          </a>
+        </li>
+         <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownExamples" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-card-list me-1"></i>Quick Nav
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarDropdownExamples">
+            <li><a class="dropdown-item" [routerLink]="['/project', 1, 'budget']" routerLinkActive="active">Budget for Project 1</a></li>
+            <li><a class="dropdown-item" [routerLink]="['/project', 1, 'team']" routerLinkActive="active">Team for Project 1</a></li> <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" [routerLink]="['/project', 2, 'budget']" routerLinkActive="active">Budget for Project 2</a></li>
+            <li><a class="dropdown-item" [routerLink]="['/project', 2, 'team']" routerLinkActive="active">Team for Project 2</a></li> <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" [routerLink]="['/budgets', 1]" routerLinkActive="active">View Budget ID 1</a></li>
+          </ul>
+        </li>
+      </ul>
+      </div>
+  </div>
+</nav>
+
+<main class="container mt-3 mb-5 flex-shrink-0">
+  <div *ngIf="submissionMessage" class="alert alert-dismissible fade show"
+       [ngClass]="isError ? 'alert-danger' : 'alert-success'" role="alert">
+    <i class="bi {{ isError ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill' }} me-2"></i>
+    {{ submissionMessage }}
+    <button type="button" class="btn-close" (click)="submissionMessage = null" aria-label="Close"></button>
+  </div>
+
+  <router-outlet (activate)="onActivate($event)"></router-outlet>
+</main>
+
+<footer class="footer mt-auto py-3 bg-light border-top">
+  <div class="container text-center">
+    <p class="mb-0 text-muted small">&copy; 2024-2025 Movie Production Management System. All rights reserved.</p>
+    <p class="mb-0 text-muted small">
+        <a href="#" class="text-muted">Privacy Policy</a> &middot; <a href="#" class="text-muted">Terms of Service</a>
+    </p>
+  </div>
+</footer>
+*/
+
+// Other files (main.ts, index.html, styles.css, etc.) remain the same.
+// BudgetManagement, BudgetDetail, ProjectForm components also remain as per last working state unless directly impacted by US03 models/services.
