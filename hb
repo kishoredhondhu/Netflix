@@ -1,4 +1,22 @@
-<?xml version="1.0" encoding="UTF-8"?>
+import zipfile
+import os
+
+# Define project structure and content
+project_name = "movieproductionsystem"
+base_dir = f"/mnt/data/{project_name}"
+src_main_java = os.path.join(base_dir, "src/main/java/com/project/movieproductionsystem")
+src_main_resources = os.path.join(base_dir, "src/main/resources")
+src_test_java = os.path.join(base_dir, "src/test/java/com/project/movieproductionsystem")
+
+# Create directories
+os.makedirs(src_main_java, exist_ok=True)
+os.makedirs(src_main_resources, exist_ok=True)
+os.makedirs(src_test_java, exist_ok=True)
+
+# Create basic files
+
+# pom.xml content with Spring Boot 3.2.5
+pom_content = '''<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
@@ -65,3 +83,36 @@
 		</plugins>
 	</build>
 </project>
+'''
+with open(os.path.join(base_dir, "pom.xml"), "w") as f:
+    f.write(pom_content)
+
+# Basic Application class
+main_app = '''package com.project.movieproductionsystem;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class MovieProductionSystemApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(MovieProductionSystemApplication.class, args);
+    }
+}
+'''
+with open(os.path.join(src_main_java, "MovieProductionSystemApplication.java"), "w") as f:
+    f.write(main_app)
+
+# application.properties
+with open(os.path.join(src_main_resources, "application.properties"), "w") as f:
+    f.write("# Add your configuration here\n")
+
+# Create ZIP file
+zip_path = f"/mnt/data/{project_name}.zip"
+with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    for root, dirs, files in os.walk(base_dir):
+        for file in files:
+            filepath = os.path.join(root, file)
+            zipf.write(filepath, os.path.relpath(filepath, base_dir))
+
+zip_path
