@@ -1,70 +1,43 @@
-// import { HttpClient } from '@angular/common/http';
-// import { Component } from '@angular/core';
-// import { Project } from './models/project';
+import { Component, OnDestroy } from &#39;@angular/core&#39;;
+import { Router } // Router is needed for navigation, not directly for project creation here
+from &#39;@angular/router&#39;;
+import { Subscription } from &#39;rxjs&#39;;
 
-// @Component({
-//   selector: 'app-root',
-//   templateUrl: './app.component.html',
-//   styleUrls: ['./app.component.css']
-// })
-// export class AppComponent {
-//   title = 'Movie_Production_ManagementSystem';
-//   project: any = null;
+// Models - Assuming these are correctly defined in your models folder
+import { MovieProjectResponse } from './models/project.model'; // For the event payload
 
-//   onProjectCreated(project: any) {
-//     this.project = project;
-//   }
-// }
-
-import { Component } from '@angular/core';
-<<<<<<< HEAD
-import { Project } from './models/project';
-import { ScheduledScene } from './models/scene';
-=======
-import { CreateMovieProjectRequest, MovieProjectResponse } from './models/project.model';
-import { ProjectService } from './service/project.service';
-
->>>>>>> 09000a38 (changes)
+// Components - Needed for instanceof check in onActivate
+import { ProjectFormComponent } from './project-form/project-form.component'; // Path to your ProjectFormComponent
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  // styleUrls: ['./app.component.css']
+selector: 'app-root',
+templateUrl: './app.component.html',
+styleUrls: ['./app.component.css'] // Assuming you have this file or remove if not
 })
-export class AppComponent {
-  title = 'Movie Production Management';
-  submissionMessage: string | null = null;
-  isError: boolean = false;
+export class AppComponent implements OnDestroy {
+title = 'Movie Production Management System'; // Consistent title
 
-  constructor(private projectService: ProjectService) {}
+// Properties for global messages and navbar link state
+submissionMessage: string | null = null;
+isError: boolean = false;
+lastCreatedProjectId: number | null = null;
 
-  handleProjectSubmission(projectData: CreateMovieProjectRequest): void {
-    this.submissionMessage = null;
-    this.isError = false;
-    console.log('App component received project data:', projectData);
+private projectSuccessfullyCreatedSub: Subscription | undefined;
+// If ProjectFormComponent also emitted an error event AppComponent should listen to:
+// private projectCreationErrorSub: Subscription | undefined;
 
-    this.projectService.createProject(projectData).subscribe({
-      next: (response: MovieProjectResponse) => {
-        console.log('Project created successfully on backend:', response);
-        this.submissionMessage = `Project "${response.title}" (ID: ${response.id}) created successfully! Dashboard status: ${response.projectDashboardStatus}`;
-        this.isError = false;
-        // Here you might want to reset the form or navigate to a dashboard
-        // For now, just showing a success message.
-      },
-      error: (error) => {
-        console.error('Error creating project on backend:', error);
-        this.submissionMessage = `Failed to create project. ${error.message || error}`;
-        this.isError = true;
-      }
-    });
-  }
-<<<<<<< HEAD
-  scenes: ScheduledScene[] = [];
-
-  addScene(scene: ScheduledScene) {
-    this.scenes.push(scene);
-  }
+constructor(
+private router: Router // Router can be used for programmatic navigation if needed elsewhere
+) {
+console.log('AppComponent: constructor called.');
 }
-=======
-}
->>>>>>> 09000a38 (changes)
+
+/\*\*
+
+  * This method is called by the &lt;router-outlet&gt;'s (activate) event.
+  * It allows AppComponent to interact with the currently routed component.
+    \*/
+    onActivate(activatedComponentRef: any): void {
+    console.log('AppComponent: Router outlet activated with component:', activatedComponentRef.constructor.name);
+
+<!-- end list -->
