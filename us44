@@ -1,54 +1,753 @@
-<<<<<<< HEAD
-<h1>MOVIE PRODUCTION MANAGEMENT SYSTEM</h1>
-<!-- <app-create-project></app-create-project> 
-<app-project-form (projectCreated)="onProjectCreated($event)"></app-project-form> 
- <app-project-dashboard *ngIf="project" [project]="project"></app-project-dashboard> -->
+/*
+## Project Structure (Illustrative within this single file)
 
-<!-- <h1>US 04</h1> -->
-<!-- <app-schedule-form (sceneScheduled)="addScene($event)"></app-schedule-form> -->
- <!-- <app-calender-view [scheduledScenes]="scenes"></app-calender-view> -->
-<!-- <app-schedule-page></app-schedule-page> -->
- <h1>US 07</h1>
- <!-- <app-asset-list></app-asset-list> -->
+src/
+├── app/
+│   ├── models/
+│   │   ├── project.model.ts
+│   │   ├── budget.model.ts
+│   │   └── team.model.ts
+│   ├── services/
+│   │   ├── project.service.ts
+│   │   ├── budget.service.ts
+│   │   └── team-member.service.ts
+│   ├── budget-management/
+│   │   └── ...
+│   ├── budget-form/
+│   │   └── ...
+│   ├── budget-detail/
+│   │   └── ...
+│   ├── project-form/
+│   │   └── ...
+│   ├── team-management/
+│   │   └── ...
+│   ├── team-member-form/
+│   │   └── ...
+│   ├── app.component.html (MODIFIED based on user's combined request)
+│   ├── app.component.ts   (Assumed to be the version handling (activate) correctly)
+│   ├── app.module.ts
+│   └── app-routing.module.ts
+├── main.ts
+├── index.html
+└── styles.css
 
- <!-- <app-asset-detail></app-asset-detail>  -->
-  <!-- <app-asset-form></app-asset-form>  -->
-<router-outlet></router-outlet>
-<!-- <h1>US 06</h1>
-<app-assistant-director-dashboard></app-assistant-director-dashboard> -->
-<!-- <h1>US 10</h1>
-<app-task-form></app-task-form>
-<app-task-list></app-task-list> -->
+*/
+
+// =============== src/app/models/budget.model.ts ===============
+export enum ContractStatus {
+    DRAFT = 'DRAFT',
+    SENT = 'SENT',
+    SIGNED = 'SIGNED',
+    ACTIVE = 'ACTIVE',
+    COMPLETED = 'COMPLETED',
+    EXPIRED = 'EXPIRED',
+    TERMINATED = 'TERMINATED'
+}
+
+export interface CreateBudgetRequestDto {
+  movieProjectId: number;
+  totalAllocatedAmount: number;
+  currency: string;
+}
+
+export interface BudgetDto {
+  id: number;
+  movieProjectId: number;
+  movieProjectTitle?: string;
+  totalAllocatedAmount: number;
+  currency: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  categories: BudgetCategoryDto[];
+}
+
+export interface CreateBudgetCategoryRequestDto {
+  name: string;
+  allocatedAmount: number;
+}
+
+export interface BudgetCategoryDto {
+  id: number;
+  name: string;
+  allocatedAmount: number;
+  lineItems: BudgetLineItemDto[];
+}
+
+export interface CreateBudgetLineItemRequestDto {
+  description: string;
+  estimatedCost: number;
+  notes?: string;
+}
+
+export interface BudgetLineItemDto {
+  id: number;
+  description: string;
+  estimatedCost: number;
+  actualCost?: number;
+  notes?: string;
+}
+
+// =============== src/app/models/project.model.ts ===============
+export interface CreateMovieProjectRequest {
+  title: string;
+  genre: string;
+  budget: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  keyTeamMembersInfo: string;
+  startFromScratch: boolean;
+}
+
+export interface MovieProjectResponse {
+  id: number;
+  title: string;
+  genre: string;
+  budget: number;
+  startDate: string;
+  endDate: string;
+  keyTeamMembersInfo: string;
+  startedFromScratch: boolean;
+  createdAt: string;
+  updatedAt: string;
+  projectDashboardStatus: string;
+}
+
+// =============== src/app/models/team.model.ts ===============
+export enum TeamMemberType {
+    CAST = 'CAST',
+    CREW = 'CREW'
+}
+
+export interface CreateTeamMemberRequestDto {
+    projectId: number;
+    name: string;
+    role: string;
+    type: TeamMemberType;
+    contactInfo: string;
+    department?: string;
+    agentInfo?: string;
+    contractDetails?: string;
+    availabilityNotes?: string;
+}
+
+export interface TeamMemberDto {
+    id: number;
+    projectId: number;
+    name: string;
+    role: string;
+    type: TeamMemberType;
+    contactInfo: string;
+    department?: string;
+    agentInfo?: string;
+    contractDetails?: string;
+    availabilityNotes?: string;
+    createdAt: string;
+    updatedAt: string;
+}
 
 
-<!-- assets -->
- <h1>Asset Management System</h1>
+// =============== src/app/services/budget.service.ts ===============
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError, of, timer } from 'rxjs';
+import { catchError, timeout, switchMap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class BudgetService {
+  private budgetsApiUrl = 'http://localhost:8081/api/v1/budgets';
+  private readonly REQUEST_TIMEOUT = 30000;
+
+  constructor(private http: HttpClient) { }
+
+  createBudgetForProject(data: CreateBudgetRequestDto): Observable<BudgetDto> {
+    console.log('BudgetService: createBudgetForProject called with data:', data);
+    return this.http.post<BudgetDto>(`${this.budgetsApiUrl}/project`, data)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error('BudgetService: createBudgetForProject request timed out.');
+            return throwError(() => new Error('Request to create budget timed out. Please try again.'));
+          }
+          return this.handleError(err, 'createBudgetForProject');
+        })
+      );
+  }
+
+  getBudgetById(budgetId: number): Observable<BudgetDto> {
+    console.log(`BudgetService: getBudgetById called for budgetId: ${budgetId}`);
+    return this.http.get<BudgetDto>(`${this.budgetsApiUrl}/${budgetId}`)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`BudgetService: getBudgetById request for ${budgetId} timed out.`);
+            return throwError(() => new Error(`Request to get budget ${budgetId} timed out.`));
+          }
+          return this.handleError(err, `getBudgetById(${budgetId})`);
+        })
+      );
+  }
+
+  getBudgetByMovieProjectId(movieProjectId: number): Observable<BudgetDto | null> {
+    console.log(`BudgetService: getBudgetByMovieProjectId called for movieProjectId: ${movieProjectId}`);
+    return this.http.get<BudgetDto>(`${this.budgetsApiUrl}/project/${movieProjectId}`).pipe(
+      timeout(this.REQUEST_TIMEOUT),
+      catchError(error => {
+        if (error.name === 'TimeoutError') {
+          console.error(`BudgetService: getBudgetByMovieProjectId request for ${movieProjectId} timed out.`);
+          return throwError(() => new Error(`Request to get budget for project ${movieProjectId} timed out.`));
+        }
+        if (error.status === 404) {
+          console.log(`BudgetService: No budget found for movieProjectId: ${movieProjectId}`);
+          return of(null);
+        }
+        return this.handleError(error, `getBudgetByMovieProjectId(${movieProjectId})`);
+      })
+    );
+  }
+
+  addCategoryToBudget(budgetId: number, categoryData: CreateBudgetCategoryRequestDto): Observable<BudgetCategoryDto> {
+    console.log(`BudgetService: addCategoryToBudget called for budgetId: ${budgetId} with data:`, categoryData);
+    return this.http.post<BudgetCategoryDto>(`${this.budgetsApiUrl}/${budgetId}/categories`, categoryData)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`BudgetService: addCategoryToBudget request for budget ${budgetId} timed out.`);
+            return throwError(() => new Error(`Request to add category to budget ${budgetId} timed out.`));
+          }
+          return this.handleError(err, `addCategoryToBudget(budget ${budgetId})`);
+        })
+      );
+  }
+
+  addLineItemToCategory(categoryId: number, lineItemData: CreateBudgetLineItemRequestDto): Observable<BudgetLineItemDto> {
+    console.log(`BudgetService: addLineItemToCategory called for categoryId: ${categoryId} with data:`, lineItemData);
+    return this.http.post<BudgetLineItemDto>(`${this.budgetsApiUrl}/categories/${categoryId}/lineitems`, lineItemData)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`BudgetService: addLineItemToCategory request for category ${categoryId} timed out.`);
+            return throwError(() => new Error(`Request to add line item to category ${categoryId} timed out.`));
+          }
+          return this.handleError(err, `addLineItemToCategory(category ${categoryId})`);
+        })
+      );
+  }
+
+  private handleError(error: HttpErrorResponse, operation: string = 'operation') {
+    let errorMessage = `An unknown error occurred during ${operation}!`;
+    if (error.status === 0) {
+        errorMessage = `Network error or CORS issue during ${operation}. Could not connect to the backend or request was blocked. Please check backend server and CORS configuration.`;
+    } else if (error.error instanceof ErrorEvent) {
+      errorMessage = `Client-side/Network error during ${operation}: ${error.error.message}`;
+    } else {
+      errorMessage = `Backend error during ${operation}. Code: ${error.status}, Message: "${error.message || error.statusText}"`;
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+         errorMessage += ` Details: ${error.error.message}`;
+      } else if (typeof error.error === 'string' && error.error.length < 200 && error.error.length > 0) {
+         errorMessage += ` Server Error: ${error.error}`;
+      }
+    }
+    console.error(`BudgetService Error: ${operation} failed (full details):`, { message: errorMessage, errorObj: error });
+    return throwError(() => new Error(errorMessage));
+  }
+}
+
+// =============== src/app/services/project.service.ts ===============
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError, timeout } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ProjectService {
+  private apiUrl = 'http://localhost:8081/api/v1/projects';
+  private readonly REQUEST_TIMEOUT = 30000;
+
+  constructor(private http: HttpClient) { }
+
+  createProject(projectData: CreateMovieProjectRequest): Observable<MovieProjectResponse> {
+    console.log('ProjectService: createProject called with data:', projectData);
+    return this.http.post<MovieProjectResponse>(this.apiUrl, projectData)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error('ProjectService: createProject request timed out.');
+            return throwError(() => new Error('Request to create project timed out. Please try again.'));
+          }
+          return this.handleError(err, 'createProject');
+        })
+      );
+  }
+
+  getProjectById(projectId: number): Observable<MovieProjectResponse> {
+    console.log(`ProjectService: getProjectById called for projectId: ${projectId}. Attempting REAL API call.`);
+    return this.http.get<MovieProjectResponse>(`${this.apiUrl}/${projectId}`)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`ProjectService: getProjectById request for ${projectId} timed out.`);
+            return throwError(() => new Error(`Request to get project ${projectId} timed out.`));
+          }
+          return this.handleError(err, `getProjectById(${projectId})`);
+        })
+      );
+  }
+
+  private handleError(error: HttpErrorResponse, operation: string = 'operation') {
+    let errorMessage = `An unknown error occurred during ${operation}!`;
+     if (error.status === 0) {
+        errorMessage = `Network error or CORS issue during ${operation}. Could not connect to the backend or request was blocked. Please check backend server and CORS configuration.`;
+    } else if (error.error instanceof ErrorEvent) {
+      errorMessage = `Client-side/Network error during ${operation}: ${error.error.message}`;
+    } else {
+      errorMessage = `Backend error during ${operation}. Code: ${error.status}, Message: "${error.message || error.statusText || 'Server error'}"`;
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+         errorMessage += ` Details: ${error.error.message}`;
+      } else if (typeof error.error === 'string' && error.error.length < 200 && error.error.length > 0) {
+         errorMessage += ` Server Error: ${error.error}`;
+      }
+    }
+    console.error(`ProjectService Error: ${operation} failed (full details):`, { message: errorMessage, errorObj: error });
+    return throwError(() => new Error(errorMessage));
+  }
+}
 
 
-<app-navbar></app-navbar>
-<div class="container mt-3">
-  <router-outlet></router-outlet>
-</div>
-=======
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">MovieProdSys</a>
-    </div>
-  </nav>
-  
-  <div class="container">
-    <app-project-form (projectSubmit)="handleProjectSubmission($event)"></app-project-form>
-  
-    <router-outlet></router-outlet>
-  
-    <div *ngIf="submissionMessage" class="mt-4 alert"
-         [ngClass]="isError ? 'alert-danger' : 'alert-success'" role="alert">
-      {{ submissionMessage }}
-    </div>
-  
-    </div>
-  
-  <footer class="text-center mt-5 mb-3">
-    <p>&copy; 2025 Movie Production Management System</p>
-  </footer>
->>>>>>> 09000a38 (changes)
+// =============== src/app/services/team-member.service.ts ===============
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError, timeout } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class TeamMemberService {
+  private apiUrl = 'http://localhost:8081/api/v1';
+  private readonly REQUEST_TIMEOUT = 30000;
+
+  constructor(private http: HttpClient) { }
+
+  getTeamMembers(projectId: number): Observable<TeamMemberDto[]> {
+    console.log(`TeamMemberService: getTeamMembers called for projectId: ${projectId}`);
+    return this.http.get<TeamMemberDto[]>(`${this.apiUrl}/projects/${projectId}/team-members`)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`TeamMemberService: getTeamMembers for project ${projectId} timed out.`);
+            return throwError(() => new Error(`Request to get team members for project ${projectId} timed out.`));
+          }
+          return this.handleError(err, `getTeamMembers(project ${projectId})`);
+        })
+      );
+  }
+
+  addTeamMember(projectId: number, memberData: CreateTeamMemberRequestDto): Observable<TeamMemberDto> {
+    console.log(`TeamMemberService: addTeamMember called for projectId: ${projectId} with data:`, memberData);
+    const dataToSend = { ...memberData, projectId };
+    return this.http.post<TeamMemberDto>(`${this.apiUrl}/projects/${projectId}/team-members`, dataToSend)
+      .pipe(
+        timeout(this.REQUEST_TIMEOUT),
+        catchError(err => {
+          if (err.name === 'TimeoutError') {
+            console.error(`TeamMemberService: addTeamMember for project ${projectId} timed out.`);
+            return throwError(() => new Error(`Request to add team member for project ${projectId} timed out.`));
+          }
+          return this.handleError(err, `addTeamMember(project ${projectId})`);
+        })
+      );
+  }
+
+  private handleError(error: HttpErrorResponse, operation: string = 'operation') {
+    let errorMessage = `An unknown error occurred during ${operation}!`;
+    if (error.status === 0) {
+        errorMessage = `Network error or CORS issue during ${operation}. Could not connect to the backend or request was blocked. Please check backend server and CORS configuration.`;
+    } else if (error.error instanceof ErrorEvent) {
+      errorMessage = `Client-side/Network error during ${operation}: ${error.error.message}`;
+    } else {
+      errorMessage = `Backend error during ${operation}. Code: ${error.status}, Message: "${error.message || error.statusText}"`;
+      if (error.error && typeof error.error === 'object' && error.error.message) {
+         errorMessage += ` Details: ${error.error.message}`;
+      } else if (typeof error.error === 'string' && error.error.length < 200 && error.error.length > 0) {
+         errorMessage += ` Server Error: ${error.error}`;
+      }
+    }
+    console.error(`TeamMemberService Error: ${operation} failed (full details):`, { message: errorMessage, errorObj: error });
+    return throwError(() => new Error(errorMessage));
+  }
+}
+
+// ... (Other service and model files as before) ...
+
+// =============== src/app/budget-management/budget-management.component.ts ===============
+// (Assumed to be the version that correctly fetches project details for its title)
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { BudgetDto } from '../models/budget.model';
+import { MovieProjectResponse } from '../models/project.model';
+import { ProjectService } from '../services/project.service';
+import { BudgetService } from '../services/budget.service';
+import { finalize } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-budget-management',
+  templateUrl: './budget-management.component.html',
+  styleUrls: ['./budget-management.component.css']
+})
+export class BudgetManagementComponent implements OnInit {
+  movieProjectId: number | null = null;
+  project: MovieProjectResponse | null = null;
+
+  budgetExists: boolean = false;
+  showBudgetForm = false;
+  existingBudgetId: number | null = null;
+  isLoading = true;
+  errorMessage: string | null = null;
+
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private projectService: ProjectService,
+    private budgetService: BudgetService
+  ) {}
+
+  ngOnInit(): void {
+    console.log("BudgetManagementComponent: ngOnInit - Initializing.");
+    const idParam = this.route.snapshot.paramMap.get('projectId');
+    if (idParam) {
+      this.movieProjectId = +idParam;
+      this.loadProjectAndThenBudgetDetails(this.movieProjectId);
+    } else {
+      this.errorMessage = "No project ID provided in the URL. Cannot manage budget.";
+      this.isLoading = false;
+    }
+  }
+
+  loadProjectAndThenBudgetDetails(projectId: number): void {
+    this.isLoading = true;
+    this.errorMessage = null;
+    this.project = null;
+    this.budgetExists = false;
+    this.existingBudgetId = null;
+
+    this.projectService.getProjectById(projectId).subscribe({
+      next: (projectDetails) => {
+        this.project = projectDetails;
+        this.checkExistingBudget(projectId);
+      },
+      error: (err) => {
+        this.errorMessage = err.message || `Failed to load project details for ID ${projectId}.`;
+        this.project = { id: projectId, title: `Project ${projectId} (Details Unavailable)` } as MovieProjectResponse;
+        this.checkExistingBudget(projectId);
+      }
+    });
+  }
+
+  checkExistingBudget(projectId: number): void {
+    this.budgetService.getBudgetByMovieProjectId(projectId).pipe(
+        finalize(() => { this.isLoading = false; })
+    ).subscribe({
+      next: budget => {
+        if (budget) {
+          this.existingBudgetId = budget.id;
+          this.budgetExists = true;
+          this.showBudgetForm = false;
+        } else {
+          this.existingBudgetId = null;
+          this.budgetExists = false;
+        }
+      },
+      error: err => {
+        const budgetErrorMsg = err.message || `Could not verify existing budget.`;
+        this.errorMessage = this.errorMessage ? `${this.errorMessage} Additionally, ${budgetErrorMsg}` : budgetErrorMsg;
+        this.budgetExists = false;
+        this.existingBudgetId = null;
+      }
+    });
+  }
+
+  onBudgetCreated(createdBudget: BudgetDto): void {
+    this.budgetExists = true;
+    this.existingBudgetId = createdBudget.id;
+    this.showBudgetForm = false;
+    this.errorMessage = null;
+    this.router.navigate(['/budgets', createdBudget.id]);
+  }
+
+   onBudgetCreationError(errorMessage: string): void {
+    // Handled by BudgetFormComponent
+  }
+
+  initiateCreateBudget(): void {
+    this.showBudgetForm = true;
+    this.errorMessage = null;
+  }
+
+  viewExistingBudget(): void {
+    if (this.existingBudgetId) {
+      this.router.navigate(['/budgets', this.existingBudgetId]);
+    } else {
+        this.errorMessage = "Cannot view budget: Budget ID is not available or budget does not exist.";
+    }
+  }
+
+  cancelCreation(): void {
+    this.showBudgetForm = false;
+  }
+}
+
+// =============== src/app/team-management/team-management.component.ts ===============
+// (Assumed to be the version that correctly fetches project details for its title)
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { TeamMemberService } from '../services/team-member.service';
+import { ProjectService } from '../services/project.service';
+import { TeamMemberDto } from '../models/team.model';
+import { MovieProjectResponse } from '../models/project.model';
+import { finalize } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-team-management',
+  templateUrl: './team-management.component.html',
+  styleUrls: ['./team-management.component.css']
+})
+export class TeamManagementComponent implements OnInit {
+  projectId!: number;
+  project: MovieProjectResponse | null = null;
+
+  teamMembers: TeamMemberDto[] = [];
+  isLoading = true;
+  errorMessage: string | null = null;
+  showAddTeamMemberForm = false;
+
+  constructor(
+    private route: ActivatedRoute,
+    private teamMemberService: TeamMemberService,
+    private projectService: ProjectService
+  ) {}
+
+  ngOnInit(): void {
+    const idParam = this.route.snapshot.paramMap.get('projectId');
+    if (idParam) {
+      this.projectId = +idParam;
+      this.loadProjectDetailsAndThenTeamMembers();
+    } else {
+      this.errorMessage = "Project ID not found in URL. Cannot manage team.";
+      this.isLoading = false;
+    }
+  }
+
+  loadProjectDetailsAndThenTeamMembers(): void {
+    this.isLoading = true;
+    this.errorMessage = null;
+    this.project = null;
+
+    this.projectService.getProjectById(this.projectId).subscribe({
+        next: (projectDetails) => {
+            this.project = projectDetails;
+            this.loadTeamMembers();
+        },
+        error: (err) => {
+            this.errorMessage = err.message || `Failed to load project details for ID ${this.projectId}.`;
+            this.project = { id: this.projectId, title: `Project ${this.projectId} (Details Unavailable)` } as MovieProjectResponse;
+            this.loadTeamMembers();
+        }
+    });
+  }
+
+  loadTeamMembers(): void {
+    this.teamMemberService.getTeamMembers(this.projectId).pipe(
+      finalize(() => { this.isLoading = false; })
+    ).subscribe({
+      next: (members) => {
+        this.teamMembers = members;
+      },
+      error: (err) => {
+        const teamErrorMsg = err.message || `Failed to load team members.`;
+        this.errorMessage = this.errorMessage ? `${this.errorMessage} Additionally, ${teamErrorMsg}` : teamErrorMsg;
+        this.teamMembers = [];
+      }
+    });
+  }
+
+  onTeamMemberSaved(newMember: TeamMemberDto): void {
+    this.showAddTeamMemberForm = false;
+    this.loadTeamMembers();
+  }
+
+  toggleAddTeamMemberForm(): void {
+    this.showAddTeamMemberForm = !this.showAddTeamMemberForm;
+    if (this.showAddTeamMemberForm) {
+      this.errorMessage = null;
+    }
+  }
+}
+
+
+// =============== src/app/app.component.ts ===============
+// (Assumed to be the version that handles (activate) for ProjectFormComponent correctly)
+import { Component, OnDestroy } from '@angular/core';
+import { MovieProjectResponse } from './models/project.model';
+import { Router } from '@angular/router';
+import { ProjectFormComponent } from './project-form/project-form.component';
+import { Subscription } from 'rxjs';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
+})
+export class AppComponent implements OnDestroy {
+  title = 'Movie Production Management System';
+  submissionMessage: string | null = null;
+  isError: boolean = false;
+  lastCreatedProjectId: number | null = null;
+
+  private projectSuccessfullyCreatedSub: Subscription | undefined;
+
+  constructor(
+    private router: Router
+  ) {
+    console.log('AppComponent constructor called - Router injected.');
+  }
+
+  onActivate(componentRef: any): void {
+    console.log('AppComponent: Router outlet activated with component:', componentRef.constructor.name);
+
+    if (this.projectSuccessfullyCreatedSub) {
+      this.projectSuccessfullyCreatedSub.unsubscribe();
+      this.projectSuccessfullyCreatedSub = undefined;
+    }
+
+    if (componentRef instanceof ProjectFormComponent) {
+      console.log('AppComponent: ProjectFormComponent activated. Subscribing to projectSuccessfullyCreated event.');
+      if (componentRef.projectSuccessfullyCreated) {
+        this.projectSuccessfullyCreatedSub = componentRef.projectSuccessfullyCreated.subscribe(
+          (projectResponse: MovieProjectResponse) => {
+            this.onProjectSuccessfullyCreated(projectResponse);
+          }
+        );
+      } else {
+        console.warn('AppComponent: projectSuccessfullyCreated EventEmitter not found on ProjectFormComponent instance.');
+      }
+    }
+  }
+
+  onProjectSuccessfullyCreated(response: MovieProjectResponse): void {
+    console.log('AppComponent: onProjectSuccessfullyCreated received:', response);
+    this.submissionMessage = `Project "${response.title}" (ID: ${response.id}) created successfully! Status: ${response.projectDashboardStatus || 'N/A'}. You can now manage its budget and team via the navbar.`;
+    this.isError = false;
+    this.lastCreatedProjectId = response.id;
+  }
+
+  ngOnDestroy() {
+    if (this.projectSuccessfullyCreatedSub) {
+      this.projectSuccessfullyCreatedSub.unsubscribe();
+    }
+  }
+}
+
+// =============== src/app/app.component.html (MODIFIED) ===============
+// Content for src/app/app.component.html
+/*
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
+  <div class="container-fluid">
+    <a class="navbar-brand" routerLink="/">
+      <i class="bi bi-film me-2"></i>MovieProdSys
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/create-project" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <i class="bi bi-plus-square-dotted me-1"></i>Create Project
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="lastCreatedProjectId">
+          <a class="nav-link" [routerLink]="['/project', lastCreatedProjectId, 'budget']" routerLinkActive="active">
+            <i class="bi bi-cash-coin me-1"></i>Manage Budget (Project #{{ lastCreatedProjectId }})
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="lastCreatedProjectId">
+          <a class="nav-link" [routerLink]="['/project', lastCreatedProjectId, 'team']" routerLinkActive="active">
+            <i class="bi bi-people me-1"></i>Manage Team (Project #{{ lastCreatedProjectId }})
+          </a>
+        </li>
+         <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownExamples" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-card-list me-1"></i>Quick Nav
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarDropdownExamples">
+            <li><a class="dropdown-item" [routerLink]="['/project', 1, 'budget']" routerLinkActive="active">Budget for Project 1</a></li>
+            <li><a class="dropdown-item" [routerLink]="['/project', 1, 'team']" routerLinkActive="active">Team for Project 1</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" [routerLink]="['/project', 2, 'budget']" routerLinkActive="active">Budget for Project 2</a></li>
+            <li><a class="dropdown-item" [routerLink]="['/project', 2, 'team']" routerLinkActive="active">Team for Project 2</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" [routerLink]="['/budgets', 1]" routerLinkActive="active">View Budget ID 1</a></li>
+          </ul>
+        </li>
+      </ul>
+      </div>
+  </div>
+</nav>
+
+<main class="container mt-3 mb-5 flex-shrink-0">
+  <div *ngIf="submissionMessage" class="alert alert-dismissible fade show"
+       [ngClass]="isError ? 'alert-danger' : 'alert-success'" role="alert">
+    <i class="bi {{ isError ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill' }} me-2"></i>
+    {{ submissionMessage }}
+    <button type="button" class="btn-close" (click)="submissionMessage = null" aria-label="Close"></button>
+  </div>
+
+  <router-outlet (activate)="onActivate($event)"></router-outlet>
+
+  <!-- Commented out sections from user's "HEAD" version.
+       These typically belong within specific routed components, not globally here.
+       If any of these are truly global, they can be uncommented and placed appropriately.
+  -->
+  <!--
+  <h1>MOVIE PRODUCTION MANAGEMENT SYSTEM</h1> (This is now in the navbar brand)
+  -->
+  <!--
+  <h1>US 07</h1> (This title should be in the Asset Management component/page)
+  -->
+  <!--
+  <h1>US 06</h1> (This title should be in the Assistant Director Dashboard component/page)
+  <app-assistant-director-dashboard></app-assistant-director-dashboard>
+  -->
+  <!--
+  <h1>US 10</h1> (This title should be in the Task Management component/page)
+  <app-task-form></app-task-form>
+  <app-task-list></app-task-list>
+  -->
+
+  <!--
+  <h1>Asset Management System</h1> (This title should be in the Asset Management component/page)
+  -->
+
+</main>
+
+<footer class="footer mt-auto py-3 bg-light border-top">
+  <div class="container text-center">
+    <p class="mb-0 text-muted small">&copy; 2025 Movie Production Management System</p>
+    <!-- <p class="mb-0 text-muted small">
+        <a href="#" class="text-muted">Privacy Policy</a> &middot; <a href="#" class="text-muted">Terms of Service</a>
+    </p> -->
+  </div>
+</footer>
+
