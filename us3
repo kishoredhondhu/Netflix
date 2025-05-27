@@ -1,75 +1,24 @@
-import { NgModule } from &#39;@angular/core&#39;;
-import { BrowserModule } from &#39;@angular/platform-browser&#39;;
-import { FormsModule, ReactiveFormsModule } from &#39;@angular/forms&#39;; // For both template-driven and reactive forms
-import { HttpClientModule } from &#39;@angular/common/http&#39;;
-import { AppRoutingModule } from &#39;./app-routing.module&#39;; // Assuming you have this file for routes
+BudgetManagementComponent,
+BudgetFormComponent,
+BudgetDetailComponent,
+TeamManagementComponent,
+TeamMemberFormComponent,
 
-import { AppComponent } from './app.component';
 
-// User Story 1 & Related
-import { ProjectFormComponent } from './project-form/project-form.component';
-// Assuming CreateProjectComponent is distinct and needed, otherwise ProjectFormComponent covers "create project"
-import { CreateProjectComponent } from './create-project/create-project.component';
-import { ProjectDashboardComponent } from './project-dashboard/project-dashboard.component';
-
-// User Story 2: Budget Management
-import { BudgetManagementComponent } from './budget-management/budget-management.component';
-import { BudgetFormComponent } from './budget-form/budget-form.component';
-import { BudgetDetailComponent } from './budget-detail/budget-detail.component';
-// Assuming BudgetCreationComponent is distinct and needed
-import { BudgetCreationComponent } from './budget-creation/budget-creation.component';
-
-// User Story 3: Team Management
-import { TeamManagementComponent } from './team-management/team-management.component';
-import { TeamMemberFormComponent } from './team-member-form/team-member-form.component';
-
-// User Story 4 & Scheduling (from your previous HEAD version)
-import { ScheduleFormComponent } from './schedule-form/schedule-form.component';
-import { CalenderViewComponent } from './calender-view/calender-view.component';
-import { SchedulePageComponent } from './schedule-page/schedule-page.component';
-
-// User Story 6 (from your previous HEAD version)
-import { AssistantDirectorDashboardComponent } from './assistant-director-dashboard/assistant-director-dashboard.component';
-import { CallSheetComponent } from './call-sheet/call-sheet.component';
-
-// User Story 7: Asset Management (from your previous HEAD version)
-// Assuming NavbarComponent is a custom global navbar.
-// If your main navbar is part of app.component.html, you can remove NavbarComponent declaration.
-import { NavbarComponent } from './assets/navbar/navbar.component';
-import { AssetCreateComponent } from './assets/asset-create/asset-create.component';
-import { AssetCheckinCheckoutComponent } from './assets/asset-checkin-checkout/asset-checkin-checkout.component';
-import { AssetAssignComponent } from './assets/asset-assign/asset-assign.component';
-import { MaintenanceScheduleComponent } from './assets/maintenance-schedule/maintenance-schedule.component';
-// Add AssetListComponent, AssetDetailComponent, AssetFormComponent if they are used.
-
-// User Story 10 (from your previous HEAD version)
-import { TaskListComponent } from './task-list/task-list.component';
-import { TaskFormComponent } from './task-form/task-form.component';
-
-// Other Components (from your previous HEAD version)
-import { LocationManagementComponent } from './location-management/location-management.component';
-
-// Services (Generally providedIn: 'root', so not strictly needed in providers array below)
-// import { ProjectService } from './service/project.service'; // Ensure path is correct if not root
-// import { CallSheetService } from './call-sheet.service'; // Add to providers if not root-provided
-
-@NgModule({
-declarations: [
-AppComponent,
-ProjectFormComponent,
-ProjectDashboardComponent,
-ScheduleFormComponent,
-CalenderViewComponent,
-SchedulePageComponent,
-BudgetCreationComponent, // If used and distinct from BudgetFormComponent
-AssistantDirectorDashboardComponent,
-CreateProjectComponent, // If used and distinct from ProjectFormComponent
-CallSheetComponent,
-TaskListComponent,
-TaskFormComponent,
-LocationManagementComponent,
-AssetCreateComponent,
-AssetCheckinCheckoutComponent,
-AssetAssignComponent,
-MaintenanceScheduleComponent,
-NavbarComponent, // If this is your global navbar component
+],
+imports: [
+BrowserModule,
+ReactiveFormsModule, // For model-driven forms
+FormsModule,         // For template-driven forms (if any component uses them)
+HttpClientModule,    // For HTTP requests
+AppRoutingModule     // For application routing (ensure this file exists and is configured)
+],
+providers: [
+// Services with @Injectable({ providedIn: 'root' }) don't need to be listed here.
+// e.g., ProjectService, BudgetService, TeamMemberService are likely root-provided.
+// If CallSheetService is not root-provided, add it here:
+// CallSheetService
+],
+bootstrap: [AppComponent]
+})
+export class AppModule { }
