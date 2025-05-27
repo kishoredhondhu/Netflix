@@ -1,43 +1,111 @@
-import { Component, OnDestroy } from &#39;@angular/core&#39;;
-import { Router } // Router is needed for navigation, not directly for project creation here
-from &#39;@angular/router&#39;;
-import { Subscription } from &#39;rxjs&#39;;
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+<<<<<<< HEAD
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { ProjectDashboardComponent } from './project-dashboard/project-dashboard.component';
 
-// Models - Assuming these are correctly defined in your models folder
-import { MovieProjectResponse } from './models/project.model'; // For the event payload
+import { ScheduleFormComponent } from './schedule-form/schedule-form.component';
+import { CalenderViewComponent } from './calender-view/calender-view.component';
+import { SchedulePageComponent } from './schedule-page/schedule-page.component';
 
-// Components - Needed for instanceof check in onActivate
-import { ProjectFormComponent } from './project-form/project-form.component'; // Path to your ProjectFormComponent
+import { ProjectFormComponent } from './project-form/project-form.component';
+import { BudgetCreationComponent } from './budget-creation/budget-creation.component';
+import { AssistantDirectorDashboardComponent } from './assistant-director-dashboard/assistant-director-dashboard.component';
 
-@Component({
-selector: 'app-root',
-templateUrl: './app.component.html',
-styleUrls: ['./app.component.css'] // Assuming you have this file or remove if not
+import { CallSheetComponent } from './call-sheet/call-sheet.component';
+import { HttpClientModule } from '@angular/common/http';
+
+import { CallSheetService } from './call-sheet.service';
+import { TaskListComponent } from './task-list/task-list.component';
+import { TaskFormComponent } from './task-form/task-form.component';
+//import { TaskComponent } from './task/task.component';
+//import { CallSheetService } from './call-sheet/call-sheet.service';  // Correct path
+
+import { LocationManagementComponent } from './location-management/location-management.component';
+
+// import { AssetListComponent } from './assets/asset-list/asset-list.component';
+// import { AssetDetailComponent } from './assets/asset-detail/asset-detail.component';
+// import { AssetFormComponent } from './assets/asset-form/asset-form.component';
+import { CreateProjectComponent } from './create-project/create-project.component';
+import { AssetCreateComponent } from './assets/asset-create/asset-create.component';
+import { AssetCheckinCheckoutComponent } from './assets/asset-checkin-checkout/asset-checkin-checkout.component';
+import { AssetAssignComponent } from './assets/asset-assign/asset-assign.component';
+import { MaintenanceScheduleComponent } from './assets/maintenance-schedule/maintenance-schedule.component';
+import { NavbarComponent } from './assets/navbar/navbar.component';
+import { RouterModule } from '@angular/router';
+=======
+import { ReactiveFormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+import { RouterModule } from '@angular/router'; // Import RouterModule
+
+import { AppComponent } from './app.component';
+import { ProjectFormComponent } from './project-form/project-form.component';
+import { ProjectService } from './service/project.service';
+
+>>>>>>> 09000a38 (changes)
+
+@NgModule({
+  declarations: [
+    AppComponent,
+<<<<<<< HEAD
+    ProjectDashboardComponent,
+    ProjectFormComponent,
+
+    ProjectDashboardComponent,
+    ScheduleFormComponent,
+    CalenderViewComponent,
+    SchedulePageComponent,
+
+    BudgetCreationComponent,
+    AssistantDirectorDashboardComponent,
+    CreateProjectComponent,
+    CallSheetComponent,
+    TaskListComponent,
+    TaskFormComponent,
+
+    LocationManagementComponent,
+// <<<<<<< HEAD
+      // AssetListComponent,
+      // AssetDetailComponent,
+      // AssetFormComponent,
+      AssetCreateComponent,
+      AssetCheckinCheckoutComponent,
+      AssetAssignComponent,
+      MaintenanceScheduleComponent,
+      NavbarComponent,
+
+      AssetCreateComponent,
+    AssetCheckinCheckoutComponent,
+    AssetAssignComponent,
+    MaintenanceScheduleComponent,
+    NavbarComponent
+
+
+
+    // AssetListComponent,
+    // AssetDetailComponent,
+    // AssetFormComponent
+=======
+    ProjectFormComponent
+>>>>>>> 09000a38 (changes)
+  ],
+  imports: [
+    BrowserModule,
+    ReactiveFormsModule,
+<<<<<<< HEAD
+
+    FormsModule,
+    RouterModule,
+=======
+>>>>>>> 09000a38 (changes)
+    HttpClientModule,
+    RouterModule.forRoot([]) // Add RouterModule with empty routes for now
+  ],
+  providers: [
+    ProjectService
+  ],
+  bootstrap: [AppComponent]
 })
-export class AppComponent implements OnDestroy {
-title = 'Movie Production Management System'; // Consistent title
-
-// Properties for global messages and navbar link state
-submissionMessage: string | null = null;
-isError: boolean = false;
-lastCreatedProjectId: number | null = null;
-
-private projectSuccessfullyCreatedSub: Subscription | undefined;
-// If ProjectFormComponent also emitted an error event AppComponent should listen to:
-// private projectCreationErrorSub: Subscription | undefined;
-
-constructor(
-private router: Router // Router can be used for programmatic navigation if needed elsewhere
-) {
-console.log('AppComponent: constructor called.');
-}
-
-/\*\*
-
-  * This method is called by the &lt;router-outlet&gt;'s (activate) event.
-  * It allows AppComponent to interact with the currently routed component.
-    \*/
-    onActivate(activatedComponentRef: any): void {
-    console.log('AppComponent: Router outlet activated with component:', activatedComponentRef.constructor.name);
-
-<!-- end list -->
+export class AppModule { }
