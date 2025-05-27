@@ -1,118 +1,273 @@
-import zipfile
-import os
+🛠️ Step-by-Step Code
+1. Role.java
+java
+Copy
+Edit
+package com.movie.production.entity;
 
-# Define project structure and content
-project_name = "movieproductionsystem"
-base_dir = f"/mnt/data/{project_name}"
-src_main_java = os.path.join(base_dir, "src/main/java/com/project/movieproductionsystem")
-src_main_resources = os.path.join(base_dir, "src/main/resources")
-src_test_java = os.path.join(base_dir, "src/test/java/com/project/movieproductionsystem")
+public enum Role {
+    PRODUCTION_MANAGER,
+    ASSISTANT_DIRECTOR,
+    COORDINATOR
+}
+2. User.java
+java
+Copy
+Edit
+package com.movie.production.entity;
 
-# Create directories
-os.makedirs(src_main_java, exist_ok=True)
-os.makedirs(src_main_resources, exist_ok=True)
-os.makedirs(src_test_java, exist_ok=True)
+import jakarta.persistence.*;
+import lombok.*;
 
-# Create basic files
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-# pom.xml content with Spring Boot 3.2.5
-pom_content = '''<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.2.5</version>
-		<relativePath/>
-	</parent>
-	<groupId>com.project</groupId>
-	<artifactId>movieproductionsystem</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>movieproductionsystem</name>
-	<description>Spring Boot project for movie production system</description>
-	<properties>
-		<java.version>21</java.version>
-	</properties>
-	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-validation</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-devtools</artifactId>
-			<scope>runtime</scope>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>mysql</groupId>
-			<artifactId>mysql-connector-java</artifactId>
-			<version>8.0.32</version>
-		</dependency>
-		<dependency>
-			<groupId>org.modelmapper</groupId>
-			<artifactId>modelmapper</artifactId>
-			<version>3.2.0</version>
-		</dependency>
-	</dependencies>
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-		</plugins>
-	</build>
-</project>
-'''
-with open(os.path.join(base_dir, "pom.xml"), "w") as f:
-    f.write(pom_content)
+    @Column(unique = true)
+    private String username;
 
-# Basic Application class
-main_app = '''package com.project.movieproductionsystem;
+    private String password;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+    @Enumerated(EnumType.STRING)
+    private Role role;
+}
+3. UserRepository.java
+java
+Copy
+Edit
+package com.movie.production.repository;
 
-@SpringBootApplication
-public class MovieProductionSystemApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(MovieProductionSystemApplication.class, args);
+import com.movie.production.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+}
+4. AuthRequest.java
+java
+Copy
+Edit
+package com.movie.production.dto;
+
+import lombok.*;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AuthRequest {
+    private String username;
+    private String password;
+}
+5. AuthResponse.java
+java
+Copy
+Edit
+package com.movie.production.dto;
+
+import lombok.*;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AuthResponse {
+    private String token;
+}
+6. JwtService.java
+java
+Copy
+Edit
+package com.movie.production.service;
+
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.stereotype.Service;
+
+import java.security.Key;
+import java.util.Date;
+
+@Service
+public class JwtService {
+    private static final String SECRET_KEY = "your-secure-secret-key-should-be-at-least-256-bits";
+    private static final long EXPIRATION_TIME = 86400000; // 1 day
+
+    private Key getSignKey() {
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+    }
+
+    public String generateToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String extractUsername(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
+    public boolean isTokenValid(String token, String username) {
+        return extractUsername(token).equals(username);
     }
 }
-'''
-with open(os.path.join(src_main_java, "MovieProductionSystemApplication.java"), "w") as f:
-    f.write(main_app)
+7. JwtAuthFilter.java
+java
+Copy
+Edit
+package com.movie.production.filter;
 
-# application.properties
-with open(os.path.join(src_main_resources, "application.properties"), "w") as f:
-    f.write("# Add your configuration here\n")
+import com.movie.production.repository.UserRepository;
+import com.movie.production.service.JwtService;
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.*;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
 
-# Create ZIP file
-zip_path = f"/mnt/data/{project_name}.zip"
-with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-    for root, dirs, files in os.walk(base_dir):
-        for file in files:
-            filepath = os.path.join(root, file)
-            zipf.write(filepath, os.path.relpath(filepath, base_dir))
+import java.io.IOException;
 
-zip_path
+@Component
+@RequiredArgsConstructor
+public class JwtAuthFilter extends OncePerRequestFilter {
+
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+
+        final String authHeader = request.getHeader("Authorization");
+        final String jwt;
+        final String username;
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        jwt = authHeader.substring(7);
+        username = jwtService.extractUsername(jwt);
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            var user = userRepository.findByUsername(username).orElse(null);
+
+            if (user != null && jwtService.isTokenValid(jwt, user.getUsername())) {
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        user.getUsername(), null, null);
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}
+8. SecurityConfig.java
+java
+Copy
+Edit
+package com.movie.production.config;
+
+import com.movie.production.filter.JwtAuthFilter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.*;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.*;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtAuthFilter jwtAuthFilter;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+}
+9. AuthController.java
+java
+Copy
+Edit
+package com.movie.production.controller;
+
+import com.movie.production.dto.*;
+import com.movie.production.repository.UserRepository;
+import com.movie.production.service.JwtService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final UserRepository userRepo;
+    private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
+
+    @PostMapping("/login")
+    public AuthResponse login(@RequestBody AuthRequest request) {
+        var user = userRepo.findByUsername(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        String token = jwtService.generateToken(user.getUsername());
+        return new AuthResponse(token);
+    }
+}
+10. application.properties
+properties
+Copy
+Edit
+server.port=8081
+spring.datasource.url=jdbc:mysql://localhost:3306/movie_db
+spring.datasource.username=root
+spring.datasource.password=yourpassword
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
