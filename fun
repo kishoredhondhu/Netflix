@@ -1,19 +1,5 @@
--- BudgetCategory table
-CREATE TABLE budget_category (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    category_name VARCHAR(100) NOT NULL,
-    project_id BIGINT,
-    CONSTRAINT fk_budget_project FOREIGN KEY (project_id)
-        REFERENCES movie_project(id) ON DELETE CASCADE
-);
-
--- BudgetLineItem table
-CREATE TABLE budget_line_item (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    item_name VARCHAR(255) NOT NULL,
-    estimated_cost DOUBLE NOT NULL,
-    actual_cost DOUBLE NOT NULL,
-    category_id BIGINT,
-    CONSTRAINT fk_lineitem_category FOREIGN KEY (category_id)
-        REFERENCES budget_category(id) ON DELETE CASCADE
-);
+{
+    "timestamp": "2025-05-28T17:52:18.116+00:00",
+    "status": 500,
+    "error": "Internal Server Error",
+    "trace": "org.springframework.dao.DataIntegrityViolationException: could not execute statement [Column 'actual_cost' cannot be null] [insert into budget_line_item (actual_cost,category_id,estimated_cost,item_name) values (?,?,?,?)]; SQL [insert into budget_line_item (actual_cost,category_id,estimated_cost,item_name) values (?,?,?,?)]; constraint [null]\r\n\tat org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:294)\r\n\tat org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:256)\r\n\tat org.springframework.orm.jpa.vendor.HibernateJpaDialect.translateExceptionIfPossible(HibernateJpaDialect.java:241)\r\n\tat org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.translateExceptionIfPossible(AbstractEntityManagerFactoryBean.java:560)\r\n\tat org.springframework.dao.support.ChainedPersistenceExceptionTranslator.translateExceptionIfPossible(ChainedPersistenceExceptionTranslator.java:61)\r\n\tat org.springframework.dao.support.DataAccessUtils.translateIfNecessary(DataAccessUtils.java:343)\r\n\tat org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:160)\r\n\tat org.springframework.aop.framework.
