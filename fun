@@ -1,85 +1,43 @@
-import { Component, OnInit } from '@angular/core';
-import { BudgetCategory, BudgetLineItem } from 'src/app/models/budget-category.model';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { BudgetService } from 'src/app/services/buget.service';
+<nav class="navbar navbar-dark bg-dark px-4">
+  <span class="navbar-brand">🎬 Movie Production</span>
+  <button class="btn btn-outline-light btn-sm" (click)="toggleSidebar()" aria-label="Toggle sidebar">☰</button>
+</nav>
 
-@Component({
-  selector: 'app-budget-management',
-  templateUrl: './budget-management.component.html'
-})
-export class BudgetManagementComponent implements OnInit {
-  projectId = 1; // 👈 Replace with dynamic project ID
-  categories: BudgetCategory[] = [];
+<div class="container-fluid mt-3">
+  <div class="row">
+    <div class="col-md-3 bg-light border-end sidebar-container"
+         *ngIf="showSidebar"
+         style="min-height: calc(100vh - 56px - 1rem); overflow-y: auto;">
+         <div class="list-group list-group-flush">
+        <a routerLink="/dashboard"
+           routerLinkActive="active"
+           class="list-group-item list-group-item-action d-flex align-items-center">
+          <i class="bi bi-bar-chart-line-fill me-2"></i> <span>Dashboard</span>
+        </a>
+        <a routerLink="/projects/create"
+           routerLinkActive="active"
+           class="list-group-item list-group-item-action d-flex align-items-center">
+          <i class="bi bi-plus-square-fill me-2"></i> <span>Create Project</span>
+        </a>
+        </div>
+    </div>
 
-  categoryForm!: FormGroup;
-  lineItemForms: { [key: number]: FormGroup } = {};
+    <div [class.col-md-9]="showSidebar" [class.col-md-12]="!showSidebar"
+         [class.ms-sm-auto]="showSidebar" [class.ps-md-4]="showSidebar">
+      <router-outlet></router-outlet>
+    </div>
 
-  constructor(private service: BudgetService, private fb: FormBuilder) {}
+  </div>
+</div>
 
-  ngOnInit(): void {
-    this.categoryForm = this.fb.group({
-      categoryName: ['', Validators.required]
-    });
-    this.loadBudget();
-  }
-
-  loadBudget(): void {
-    this.service.getProjectBudget(this.projectId).subscribe(data => {
-      this.categories = data;
-      // init line item forms per category
-      data.forEach(cat => {
-        this.lineItemForms[cat.id!] = this.fb.group({
-          itemName: ['', Validators.required],
-          estimatedCost: [0, [Validators.required, Validators.min(1)]],
-          actualCost: [0, [Validators.required, Validators.min(0)]]
-        });
-      });
-    });
-  }
-
-  addCategory(): void {
-    if (this.categoryForm.invalid) return;
-    const payload = {
-      categoryName: this.categoryForm.value.categoryName,
-      projectId: this.projectId
-    };
-    this.service.addCategory(payload).subscribe(() => {
-      this.categoryForm.reset();
-      this.loadBudget();
-    });
-  }
-
-  addLineItem(categoryId: number): void {
-    const form = this.lineItemForms[categoryId];
-    if (form.invalid) return;
-
-    const item: BudgetLineItem = {
-      itemName: form.value.itemName,
-      estimatedCost: form.value.estimatedCost,
-      actualCost: form.value.actualCost,
-      categoryId
-    };
-
-    this.service.addLineItem(item).subscribe(() => {
-      form.reset({ estimatedCost: 0, actualCost: 0 });
-      this.loadBudget();
-    });
-  }
-
-  deleteLineItem(id: number): void {
-    this.service.deleteLineItem(id).subscribe(() => this.loadBudget());
-  }
-
-  calculateCategoryTotals(category: BudgetCategory) {
-    let estimated = 0, actual = 0;
-    category.lineItems.forEach(i => {
-      estimated += i.estimatedCost;
-      actual += i.actualCost;
-    });
-    return {
-      estimated,
-      actual,
-      variance: actual - estimated
-    };
-  }
-}
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+  <div #successToastAppLevel id="successToastAppLevel" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">
+        ✅ Notification from App Component!
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
