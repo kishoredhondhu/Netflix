@@ -1,31 +1,76 @@
-<div class="card shadow-sm">
-  <div class="card-header bg-dark text-white">Dashboard</div>
-  <div class="card-body p-0">
-    <table class="table table-striped mb-0">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Genre</th>
-          <th>Budget</th>
-          <th>Timeline</th>
-          <th>Template</th>
-          <th>Team</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let p of projects">
-          <td>{{ p.title }}</td>
-          <td>{{ p.genre }}</td>
-          <td>₹{{ p.budget }}</td>
-          <td>{{ p.startDate }} → {{ p.endDate }}</td>
-          <td><span class="badge bg-info">{{ p.isTemplate ? 'Yes' : 'No' }}</span></td>
-          <td>
-            <ul class="mb-0 ps-3">
-              <li *ngFor="let m of p.keyTeamMembers">{{ m }}</li>
-            </ul>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+import { Component, EventEmitter, Output } from '@angular/core';
+import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ProjectService } from 'src/app/services/project.service';
+
+@Component({
+  selector: 'app-project-form',
+  templateUrl: './project-form.component.html',
+})
+export class ProjectFormComponent {
+  @Output() projectCreated = new EventEmitter<void>();
+  projectForm: FormGroup;
+  roles = ['Director', 'Producer', 'Writer', 'Cinematographer', 'Editor'];
+  genres = ['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Thriller'];
+
+  constructor(private fb: FormBuilder, private service: ProjectService) {
+    this.projectForm = this.fb.group({
+      title: ['', Validators.required],
+      genre: ['', Validators.required],
+      budget: [null, [Validators.required, Validators.min(1)]],
+      startDate: ['', Validators.required],
+      endDate: ['', Validators.required],
+      isTemplate: [false],
+      keyTeamMembers: this.fb.array([], Validators.required),
+    });
+
+    this.projectForm.get('isTemplate')?.valueChanges.subscribe((checked) => {
+      if (checked) {
+        this.projectForm.patchValue({
+          title: 'Default Project',
+          genre: 'Sci-Fi',
+          budget: 5000000,
+          startDate: '2025-07-01',
+          endDate: '2025-12-01',
+        }, { emitEvent: false });
+
+        this.keyTeamMembers.clear();
+        this.keyTeamMembers.push(this.fb.group({ name: ['Kishore'], role: ['Director'] }));
+        this.keyTeamMembers.push(this.fb.group({ name: ['Ron'], role: ['Writer'] }));
+      } else {
+        this.projectForm.reset(undefined, { emitEvent: false });
+        this.keyTeamMembers.clear();
+      }
+    });
+  }
+
+  get keyTeamMembers(): FormArray {
+    return this.projectForm.get('keyTeamMembers') as FormArray;
+  }
+
+  addTeamMember(nameInput: HTMLInputElement, roleSelect: HTMLSelectElement) {
+    const name = nameInput.value.trim();
+    const role = roleSelect.value;
+
+    if (name && role) {
+      this.keyTeamMembers.push(this.fb.group({ name: [name], role: [role] }));
+      nameInput.value = '';
+    }
+  }
+
+  removeTeamMember(i: number) {
+    this.keyTeamMembers.removeAt(i);
+  }
+
+  onSubmit() {
+    if (this.projectForm.invalid) {
+      this.projectForm.markAllAsTouched();
+      return;
+    }
+
+    this.service.createProject(this.projectForm.value).subscribe(() => {
+      this.projectCreated.emit();
+      this.projectForm.reset();
+      this.keyTeamMembers.clear();
+    });
+  }
+}
