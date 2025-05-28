@@ -1,18 +1,15 @@
-import { Component, OnInit } from '@angular/core';
-import { MovieProject, ProjectService } from 'src/app/services/project.service';
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { AppComponent } from './app.component';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+import { ProjectFormComponent } from './components/project-form/project-form.component';
+import { ProjectListComponent } from './components/project-list/project-list.component';
 
-@Component({
-  selector: 'app-project-list',
-  templateUrl: './project-list.component.html',
+@NgModule({
+  declarations: [AppComponent, ProjectFormComponent, ProjectListComponent],
+  imports: [BrowserModule, FormsModule, ReactiveFormsModule, HttpClientModule],
+  providers: [],
+  bootstrap: [AppComponent],
 })
-export class ProjectListComponent implements OnInit {
-  projects: MovieProject[] = [];
-
-  constructor(private projectService: ProjectService) {}
-
-  ngOnInit(): void {
-    this.projectService.getAllProjects().subscribe((data) => {
-      this.projects = data;
-    });
-  }
-}
+export class AppModule {}
