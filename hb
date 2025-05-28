@@ -1,33 +1,27 @@
-package com.project.movieproductionsystem.service;
+package com.project.movieproductionsystem.controller;
 
 import com.project.movieproductionsystem.dto.MovieProjectDTO;
-import com.project.movieproductionsystem.entity.MovieProject;
-import com.project.movieproductionsystem.repository.MovieProjectRepository;
+import com.project.movieproductionsystem.service.MovieProjectService;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
-import org.springframework.stereotype.Service;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-@Service
+@RestController
+@RequestMapping("/api/projects")
 @RequiredArgsConstructor
-public class MovieProjectServiceImpl implements MovieProjectService {
+public class MovieProjectController {
 
-    private final MovieProjectRepository repository;
-    private final ModelMapper mapper;
+    private final MovieProjectService service;
 
-    @Override
-    public MovieProjectDTO createProject(MovieProjectDTO dto) {
-        MovieProject project = mapper.map(dto, MovieProject.class);
-        return mapper.map(repository.save(project), MovieProjectDTO.class);
+    @PostMapping
+    public ResponseEntity<MovieProjectDTO> create(@RequestBody MovieProjectDTO dto) {
+        return ResponseEntity.ok(service.createProject(dto));
     }
 
-    @Override
-    public List<MovieProjectDTO> getAllProjects() {
-        return repository.findAll()
-                .stream()
-                .map(p -> mapper.map(p, MovieProjectDTO.class))
-                .collect(Collectors.toList());
+    @GetMapping
+    public ResponseEntity<List<MovieProjectDTO>> getAll() {
+        return ResponseEntity.ok(service.getAllProjects());
     }
 }
