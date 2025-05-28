@@ -1,15 +1,31 @@
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-import { AppComponent } from './app.component';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
-import { ProjectFormComponent } from './components/project-form/project-form.component';
-import { ProjectListComponent } from './components/project-list/project-list.component';
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
-@NgModule({
-  declarations: [AppComponent, ProjectFormComponent, ProjectListComponent],
-  imports: [BrowserModule, FormsModule, ReactiveFormsModule, HttpClientModule],
-  providers: [],
-  bootstrap: [AppComponent],
+export interface MovieProject {
+  id?: number;
+  title: string;
+  genre: string;
+  budget: number;
+  startDate: string;
+  endDate: string;
+  isTemplate: boolean;
+  keyTeamMembers: string[];
+}
+
+@Injectable({
+  providedIn: 'root'
 })
-export class AppModule {}
+export class ProjectService {
+  private baseUrl = 'http://localhost:8081/api/projects';
+
+  constructor(private http: HttpClient) {}
+
+  createProject(project: MovieProject): Observable<MovieProject> {
+    return this.http.post<MovieProject>(this.baseUrl, project);
+  }
+
+  getAllProjects(): Observable<MovieProject[]> {
+    return this.http.get<MovieProject[]>(this.baseUrl);
+  }
+}
