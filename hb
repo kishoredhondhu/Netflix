@@ -1,47 +1,25 @@
-import { Component } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray } from '@angular/forms';
-import { ProjectService, MovieProject } from 'src/app/services/project.service';
+<div *ngIf="submitted" style="color: green;">Project created successfully!</div>
 
-@Component({
-  selector: 'app-project-form',
-  templateUrl: './project-form.component.html',
-})
-export class ProjectFormComponent {
-  projectForm: FormGroup;
-  submitted = false;
+<form [formGroup]="projectForm" (ngSubmit)="onSubmit()">
+  <input formControlName="title" placeholder="Title" required /><br>
+  <input formControlName="genre" placeholder="Genre" required /><br>
+  <input type="number" formControlName="budget" placeholder="Budget" required /><br>
+  <input type="date" formControlName="startDate" /><br>
+  <input type="date" formControlName="endDate" /><br>
 
-  constructor(private fb: FormBuilder, private projectService: ProjectService) {
-    this.projectForm = this.fb.group({
-      title: [''],
-      genre: [''],
-      budget: [0],
-      startDate: [''],
-      endDate: [''],
-      isTemplate: [false],
-      keyTeamMembers: this.fb.array([])
-    });
-  }
+  <label>
+    <input type="checkbox" formControlName="isTemplate" /> Use Template
+  </label><br>
 
-  get keyTeamMembers(): FormArray {
-    return this.projectForm.get('keyTeamMembers') as FormArray;
-  }
+  <input #teamMemberInput placeholder="Team Member Name" />
+  <button type="button" (click)="addTeamMember(teamMemberInput.value); teamMemberInput.value=''">Add Member</button>
 
-  addTeamMember(member: string) {
-    if (member) this.keyTeamMembers.push(this.fb.control(member));
-  }
+  <ul>
+    <li *ngFor="let member of keyTeamMembers.controls; let i=index">
+      {{ member.value }}
+      <button type="button" (click)="removeTeamMember(i)">Remove</button>
+    </li>
+  </ul>
 
-  removeTeamMember(index: number) {
-    this.keyTeamMembers.removeAt(index);
-  }
-
-  onSubmit() {
-    const project: MovieProject = this.projectForm.value;
-    this.projectService.createProject(project).subscribe({
-      next: () => {
-        this.submitted = true;
-        this.projectForm.reset();
-        this.keyTeamMembers.clear();
-      }
-    });
-  }
-}
+  <button type="submit">Create Project</button>
+</form>
