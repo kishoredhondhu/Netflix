@@ -1,4 +1,31 @@
-'router-outlet' is not a known element:
-1. If 'router-outlet' is an Angular component, then verify that it is part of this module.
-2. If 'router-outlet' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@NgModule.schemas' of this component to suppress this message.ngtsc(-998001)
-app.component.ts(2, 51): Error occurs in the template of component AppComponent.
+package com.project.movieproductionsystem.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDate;
+import java.util.List;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CastCrewMember {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String role;
+    private String contactEmail;
+    private String contactPhone;
+
+    @Enumerated(EnumType.STRING)
+    private ContractStatus contractStatus;
+
+    @ElementCollection
+    private List<LocalDate> availabilityDates;
+
+    private String contractFileName;
+}
