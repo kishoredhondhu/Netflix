@@ -1,41 +1,55 @@
-package com.project.movieproductionsystem.service;
+package com.project.movieproductionsystem.filter;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Service;
+import com.project.movieproductionsystem.repository.UserRepository;
+import com.project.movieproductionsystem.service.JwtService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.security.Key;
-import java.util.Date;
+import java.io.IOException;
 
-@Service
-public class JwtService {
+@Component
+@RequiredArgsConstructor
+public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private static final String SECRET_KEY = "12345678901234567890123456789012"; // 32 bytes min
-    private static final long EXPIRATION_TIME = 86400000; // 1 day
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
 
-    private Key getSignKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
-    }
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
 
-    public String generateToken(String username) {
-        return Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(getSignKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
+        final String authHeader = request.getHeader("Authorization");
+        final String jwt;
+        final String username;
 
-    public String extractUsername(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSignKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
-    }
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-    public boolean isTokenValid(String token, String username) {
-        return extractUsername(token).equals(username);
+        jwt = authHeader.substring(7);
+        username = jwtService.extractUsername(jwt);
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            var user = userRepository.findByUsername(username).orElse(null);
+
+            if (user != null && jwtService.isTokenValid(jwt, user.getUsername())) {
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(user.getUsername(), null, null);
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+
+        filterChain.doFilter(request, response);
     }
 }
