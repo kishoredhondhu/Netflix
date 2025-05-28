@@ -1,21 +1,23 @@
-import { Component, OnInit } from '@angular/core';
-import { MovieProject, ProjectService } from './services/project.service';
+<nav class="navbar navbar-dark bg-dark px-4">
+  <span class="navbar-brand">🎬 Movie Production</span>
+</nav>
 
-@Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-})
-export class AppComponent implements OnInit {
-  projects: MovieProject[] = [];
-  showSidebar = true;
+<div class="container-fluid mt-3">
+  <button class="btn btn-outline-secondary mb-3" (click)="showSidebar = !showSidebar">
+    {{ showSidebar ? 'Hide' : 'Show' }} Sidebar
+  </button>
 
-  constructor(private service: ProjectService) {}
+  <div class="row">
+    <div class="col-md-3" *ngIf="showSidebar">
+      <div class="list-group">
+        <a class="list-group-item active">Dashboard</a>
+        <a class="list-group-item">Create Project</a>
+      </div>
+    </div>
 
-  ngOnInit(): void {
-    this.loadProjects();
-  }
-
-  loadProjects() {
-    this.service.getAllProjects().subscribe(data => this.projects = data);
-  }
-}
+    <div [class.col-md-9]="showSidebar" [class.col-md-12]="!showSidebar">
+      <app-project-form (projectCreated)="loadProjects()"></app-project-form>
+      <app-project-list [projects]="projects"></app-project-list>
+    </div>
+  </div>
+</div>
