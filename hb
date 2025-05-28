@@ -1,15 +1,47 @@
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-import { AppComponent } from './app.component';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
-import { ProjectFormComponent } from './components/project-form/project-form.component';
-import { ProjectListComponent } from './components/project-list/project-list.component';
+import { Component } from '@angular/core';
+import { FormBuilder, FormGroup, FormArray } from '@angular/forms';
+import { ProjectService, MovieProject } from 'src/app/services/project.service';
 
-@NgModule({
-  declarations: [AppComponent, ProjectFormComponent, ProjectListComponent],
-  imports: [BrowserModule, FormsModule, ReactiveFormsModule, HttpClientModule],
-  providers: [],
-  bootstrap: [AppComponent],
+@Component({
+  selector: 'app-project-form',
+  templateUrl: './project-form.component.html',
 })
-export class AppModule {}
+export class ProjectFormComponent {
+  projectForm: FormGroup;
+  submitted = false;
+
+  constructor(private fb: FormBuilder, private projectService: ProjectService) {
+    this.projectForm = this.fb.group({
+      title: [''],
+      genre: [''],
+      budget: [0],
+      startDate: [''],
+      endDate: [''],
+      isTemplate: [false],
+      keyTeamMembers: this.fb.array([])
+    });
+  }
+
+  get keyTeamMembers(): FormArray {
+    return this.projectForm.get('keyTeamMembers') as FormArray;
+  }
+
+  addTeamMember(member: string) {
+    if (member) this.keyTeamMembers.push(this.fb.control(member));
+  }
+
+  removeTeamMember(index: number) {
+    this.keyTeamMembers.removeAt(index);
+  }
+
+  onSubmit() {
+    const project: MovieProject = this.projectForm.value;
+    this.projectService.createProject(project).subscribe({
+      next: () => {
+        this.submitted = true;
+        this.projectForm.reset();
+        this.keyTeamMembers.clear();
+      }
+    });
+  }
+}
