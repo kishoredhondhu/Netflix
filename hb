@@ -1,25 +1,73 @@
-<nav class="navbar navbar-dark bg-dark px-4">
-  <span class="navbar-brand">🎬 Movie Production</span>
-  <button class="btn btn-outline-light btn-sm" (click)="toggleSidebar()">☰</button>
-</nav>
+import { Component, EventEmitter, Output } from '@angular/core';
+import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { ProjectService } from 'src/app/services/project.service';
 
-<div class="container-fluid mt-3">
-  <div class="row">
-    <div class="col-md-3 bg-light border-end" *ngIf="showSidebar"
-         style="min-height: 100vh; overflow-y: auto; resize: horizontal;">
-      <div class="list-group">
-        <a class="list-group-item list-group-item-action"
-           [class.active]="activeSection === 'dashboard'"
-           (click)="setSection('dashboard')">Dashboard</a>
-        <a class="list-group-item list-group-item-action"
-           [class.active]="activeSection === 'form'"
-           (click)="setSection('form')">Create Project</a>
-      </div>
-    </div>
+@Component({
+  selector: 'app-project-form',
+  templateUrl: './project-form.component.html'
+})
+export class ProjectFormComponent {
+  @Output() projectCreated = new EventEmitter<void>();
+  projectForm: FormGroup;
+  genres = ['Action', 'Drama', 'Comedy', 'Sci-Fi', 'Horror', 'Romance'];
 
-    <div [class.col-md-9]="showSidebar" [class.col-md-12]="!showSidebar">
-      <app-project-form *ngIf="activeSection === 'form'" (projectCreated)="setSection('dashboard')"></app-project-form>
-      <app-project-list *ngIf="activeSection === 'dashboard'"></app-project-list>
-    </div>
-  </div>
-</div>
+  constructor(private fb: FormBuilder, private service: ProjectService) {
+    this.projectForm = this.fb.group({
+      title: ['', Validators.required],
+      genre: ['', Validators.required],
+      budget: [null, [Validators.required, Validators.min(1)]],
+      startDate: ['', Validators.required],
+      endDate: ['', Validators.required],
+      isTemplate: [false],
+      keyTeamMembers: this.fb.array([], Validators.required),
+    });
+
+    this.projectForm.get('isTemplate')?.valueChanges.subscribe(checked => {
+      if (checked) {
+        this.projectForm.patchValue({
+          title: 'Default Project',
+          genre: 'Sci-Fi',
+          budget: 5000000,
+          startDate: '2025-07-01',
+          endDate: '2025-12-01',
+        }, { emitEvent: false });
+        this.keyTeamMembers.clear();
+        ['Director', 'Producer'].forEach(name =>
+          this.keyTeamMembers.push(this.fb.control(name))
+        );
+      } else {
+        this.projectForm.reset(undefined, { emitEvent: false });
+        this.keyTeamMembers.clear();
+      }
+    });
+  }
+
+  get keyTeamMembers(): FormArray {
+    return this.projectForm.get('keyTeamMembers') as FormArray;
+  }
+
+  addTeamMember(nameInput: HTMLInputElement) {
+    const name = nameInput.value.trim();
+    if (name) {
+      this.keyTeamMembers.push(this.fb.control(name));
+      nameInput.value = '';
+    }
+  }
+
+  removeTeamMember(index: number) {
+    this.keyTeamMembers.removeAt(index);
+  }
+
+  onSubmit() {
+    if (this.projectForm.invalid) {
+      this.projectForm.markAllAsTouched();
+      return;
+    }
+
+    this.service.createProject(this.projectForm.value).subscribe(() => {
+      this.projectCreated.emit();
+      this.projectForm.reset();
+      this.keyTeamMembers.clear();
+    });
+  }
+}
