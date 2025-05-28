@@ -1,92 +1,93 @@
-import { Component, EventEmitter, Output } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { ProjectService } from 'src/app/services/project.service';
+<div class="card shadow mb-4">
+  <div class="card-header bg-primary text-white">
+    <h5 class="mb-0">Create Movie Project</h5>
+  </div>
+  <div class="card-body">
 
-declare var bootstrap: any;
+    <!-- Project Details -->
+    <div class="mb-4">
+      <h6>Project Details</h6>
+      <div class="mb-3">
+        <label class="form-label">Title</label>
+        <input class="form-control" formControlName="title" />
+      </div>
 
-@Component({
-  selector: 'app-project-form',
-  templateUrl: './project-form.component.html'
-})
-export class ProjectFormComponent {
-  @Output() projectCreated = new EventEmitter<void>();
-  projectForm: FormGroup;
+      <div class="mb-3">
+        <label class="form-label">Genres</label>
+        <select class="form-select" multiple (change)="updateGenres($event)">
+          <option *ngFor="let g of genres" [value]="g">{{ g }}</option>
+        </select>
+      </div>
 
-  roles: string[] = ['Director', 'Producer', 'Writer', 'Cinematographer', 'Editor'];
-  genres: string[] = ['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Thriller'];
+      <div class="mb-3">
+        <label class="form-label">Budget (₹)</label>
+        <input type="number" class="form-control" formControlName="budget" />
+      </div>
+    </div>
 
-  constructor(private fb: FormBuilder, private service: ProjectService) {
-    this.projectForm = this.fb.group({
-      title: ['', Validators.required],
-      genre: [[], Validators.required],
-      budget: [null, [Validators.required, Validators.min(1)]],
-      startDate: ['', Validators.required],
-      endDate: ['', Validators.required],
-      isTemplate: [false],
-      keyTeamMembers: this.fb.array([], Validators.required),
-    });
+    <!-- Timeline -->
+    <div class="mb-4">
+      <h6>Timeline</h6>
+      <div class="row">
+        <div class="col">
+          <label class="form-label">Start Date</label>
+          <input type="date" class="form-control" formControlName="startDate" />
+        </div>
+        <div class="col">
+          <label class="form-label">End Date</label>
+          <input type="date" class="form-control" formControlName="endDate" />
+        </div>
+      </div>
+    </div>
 
-    this.projectForm.get('isTemplate')?.valueChanges.subscribe((checked) => {
-      if (checked) {
-        this.projectForm.patchValue({
-          title: 'Default Project',
-          budget: 5000000,
-          startDate: '2025-07-01',
-          endDate: '2025-12-01'
-        }, { emitEvent: false });
+    <!-- Template Toggle -->
+    <div class="form-check form-switch mb-4">
+      <input type="checkbox" class="form-check-input" formControlName="isTemplate" id="templateSwitch">
+      <label class="form-check-label" for="templateSwitch">
+        Use Template <span title="Prefills title, genres, team roles, and budget">🛈</span>
+      </label>
+    </div>
 
-        this.projectForm.get('genre')?.setValue(['Sci-Fi', 'Action']);
-        this.keyTeamMembers.clear();
-        this.keyTeamMembers.push(this.fb.group({ name: ['Kishore'], role: ['Director'] }));
-        this.keyTeamMembers.push(this.fb.group({ name: ['Ron'], role: ['Writer'] }));
-      } else {
-        this.projectForm.reset(undefined, { emitEvent: false });
-        this.keyTeamMembers.clear();
-      }
-    });
-  }
+    <!-- Team Members -->
+    <div class="mb-3">
+      <h6>Team Members</h6>
+      <div class="row g-2">
+        <div class="col-5">
+          <input #nameInput class="form-control" placeholder="Enter name" />
+        </div>
+        <div class="col-5">
+          <select #roleSelect class="form-select">
+            <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+          </select>
+        </div>
+        <div class="col-2">
+          <button class="btn btn-outline-secondary w-100" type="button"
+                  (click)="addTeamMember(nameInput, roleSelect)">Add</button>
+        </div>
+      </div>
 
-  get keyTeamMembers(): FormArray {
-    return this.projectForm.get('keyTeamMembers') as FormArray;
-  }
+      <ul class="list-group mt-3">
+        <li *ngFor="let m of keyTeamMembers.controls; let i=index"
+            class="list-group-item d-flex justify-content-between align-items-center">
+          {{ m.value.name }} ({{ m.value.role }})
+          <button class="btn btn-sm btn-danger" (click)="removeTeamMember(i)">×</button>
+        </li>
+      </ul>
+    </div>
 
-  updateGenres(event: Event) {
-    const selectedOptions = (event.target as HTMLSelectElement).selectedOptions;
-    const values: string[] = [];
-    for (let i = 0; i < selectedOptions.length; i++) {
-      values.push(selectedOptions[i].value);
-    }
-    this.projectForm.get('genre')?.setValue(values);
-  }
+    <button type="submit" class="btn btn-success w-100" [disabled]="projectForm.invalid">
+      Create Project
+    </button>
+  </div>
+</div>
 
-  addTeamMember(nameInput: HTMLInputElement, roleSelect: HTMLSelectElement) {
-    const name = nameInput.value.trim();
-    const role = roleSelect.value;
-
-    if (name && role) {
-      this.keyTeamMembers.push(this.fb.group({ name: [name], role: [role] }));
-      nameInput.value = '';
-    }
-  }
-
-  removeTeamMember(i: number) {
-    this.keyTeamMembers.removeAt(i);
-  }
-
-  onSubmit() {
-    if (this.projectForm.invalid) {
-      this.projectForm.markAllAsTouched();
-      return;
-    }
-
-    this.service.createProject(this.projectForm.value).subscribe(() => {
-      const toastEl = document.getElementById('successToast');
-      const toast = new bootstrap.Toast(toastEl!);
-      toast.show();
-
-      this.projectCreated.emit();
-      this.projectForm.reset();
-      this.keyTeamMembers.clear();
-    });
-  }
-}
+<!-- Bootstrap Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+  <div class="toast align-items-center text-bg-success border-0" role="alert" id="successToast">
+    <div class="d-flex">
+      <div class="toast-body">✅ Project created successfully!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
