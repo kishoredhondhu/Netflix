@@ -1,8 +1,28 @@
-USE movieproductionlogin;
+package com.project.movieproductionsystem.entity;
 
-INSERT INTO users (username, password, role)
-VALUES (
-  'admin',
-  '$2a$10$0NkkknISnYZzK0jPBNhUw.CZyMdG0T9MrDhQW0sW23G.LvvYRBWiy',  -- this is 'admin123'
-  'PRODUCTION_MANAGER'
-);
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDate;
+import java.util.List;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MovieProject {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String title;
+    private String genre;
+    private Double budget;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private boolean isTemplate;
+
+    @ElementCollection
+    private List<String> keyTeamMembers;
+}
