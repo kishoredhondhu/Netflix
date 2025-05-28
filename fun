@@ -1,85 +1,67 @@
-import { Component, OnInit } from '@angular/core';
-import { BudgetService } from 'src/app/services/budget.service';
-import { BudgetCategory, BudgetLineItem } from 'src/app/models/budget-category.model';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+<div class="container mt-4">
+  <h4>🎯 Budget Management</h4>
 
-@Component({
-  selector: 'app-budget-management',
-  templateUrl: './budget-management.component.html'
-})
-export class BudgetManagementComponent implements OnInit {
-  projectId = 1; // 👈 Replace with dynamic project ID
-  categories: BudgetCategory[] = [];
+  <!-- Category Form -->
+  <form [formGroup]="categoryForm" (ngSubmit)="addCategory()" class="d-flex gap-2 mb-4">
+    <input formControlName="categoryName" class="form-control" placeholder="Enter category name">
+    <button type="submit" class="btn btn-primary" [disabled]="categoryForm.invalid">Add Category</button>
+  </form>
 
-  categoryForm!: FormGroup;
-  lineItemForms: { [key: number]: FormGroup } = {};
+  <!-- Categories + Line Items -->
+  <div *ngFor="let cat of categories" class="card mb-3 shadow-sm">
+    <div class="card-header bg-secondary text-white d-flex justify-content-between">
+      <strong>{{ cat.categoryName }}</strong>
+      <span class="text-end small">
+        Total: ₹{{ calculateCategoryTotals(cat).estimated | number }} → ₹{{ calculateCategoryTotals(cat).actual | number }}
+        <span class="ms-2 badge" [ngClass]="{
+          'bg-success': calculateCategoryTotals(cat).variance <= 0,
+          'bg-danger': calculateCategoryTotals(cat).variance > 0
+        }">
+          Variance: ₹{{ calculateCategoryTotals(cat).variance | number }}
+        </span>
+      </span>
+    </div>
 
-  constructor(private service: BudgetService, private fb: FormBuilder) {}
+    <div class="card-body">
+      <form [formGroup]="lineItemForms[cat.id!]" (ngSubmit)="addLineItem(cat.id!)" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <input formControlName="itemName" class="form-control" placeholder="Item name">
+        </div>
+        <div class="col-md-3">
+          <input type="number" formControlName="estimatedCost" class="form-control" placeholder="Estimated ₹">
+        </div>
+        <div class="col-md-3">
+          <input type="number" formControlName="actualCost" class="form-control" placeholder="Actual ₹">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-success w-100" [disabled]="lineItemForms[cat.id!].invalid">Add</button>
+        </div>
+      </form>
 
-  ngOnInit(): void {
-    this.categoryForm = this.fb.group({
-      categoryName: ['', Validators.required]
-    });
-    this.loadBudget();
-  }
-
-  loadBudget(): void {
-    this.service.getProjectBudget(this.projectId).subscribe(data => {
-      this.categories = data;
-      // init line item forms per category
-      data.forEach(cat => {
-        this.lineItemForms[cat.id!] = this.fb.group({
-          itemName: ['', Validators.required],
-          estimatedCost: [0, [Validators.required, Validators.min(1)]],
-          actualCost: [0, [Validators.required, Validators.min(0)]]
-        });
-      });
-    });
-  }
-
-  addCategory(): void {
-    if (this.categoryForm.invalid) return;
-    const payload = {
-      categoryName: this.categoryForm.value.categoryName,
-      projectId: this.projectId
-    };
-    this.service.addCategory(payload).subscribe(() => {
-      this.categoryForm.reset();
-      this.loadBudget();
-    });
-  }
-
-  addLineItem(categoryId: number): void {
-    const form = this.lineItemForms[categoryId];
-    if (form.invalid) return;
-
-    const item: BudgetLineItem = {
-      itemName: form.value.itemName,
-      estimatedCost: form.value.estimatedCost,
-      actualCost: form.value.actualCost,
-      categoryId
-    };
-
-    this.service.addLineItem(item).subscribe(() => {
-      form.reset({ estimatedCost: 0, actualCost: 0 });
-      this.loadBudget();
-    });
-  }
-
-  deleteLineItem(id: number): void {
-    this.service.deleteLineItem(id).subscribe(() => this.loadBudget());
-  }
-
-  calculateCategoryTotals(category: BudgetCategory) {
-    let estimated = 0, actual = 0;
-    category.lineItems.forEach(i => {
-      estimated += i.estimatedCost;
-      actual += i.actualCost;
-    });
-    return {
-      estimated,
-      actual,
-      variance: actual - estimated
-    };
-  }
-}
+      <table class="table table-bordered table-sm mt-3">
+        <thead class="table-light">
+          <tr>
+            <th>Item</th>
+            <th>Estimated ₹</th>
+            <th>Actual ₹</th>
+            <th>Variance</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of cat.lineItems">
+            <td>{{ item.itemName }}</td>
+            <td>{{ item.estimatedCost | number }}</td>
+            <td>{{ item.actualCost | number }}</td>
+            <td [ngClass]="{'text-success': (item.actualCost - item.estimatedCost) <= 0, 'text-danger': (item.actualCost - item.estimatedCost) > 0}">
+              ₹{{ item.actualCost - item.estimatedCost | number }}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-danger" (click)="deleteLineItem(item.id!)">🗑</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
