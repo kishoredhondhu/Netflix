@@ -1,71 +1,70 @@
-import { Component, EventEmitter, Output } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
-import { ProjectService, MovieProject, TeamMember } from 'src/app/services/project.service';
+<div class="card shadow mb-4">
+  <div class="card-header bg-primary text-white">Create Movie Project</div>
+  <div class="card-body">
+    <form [formGroup]="projectForm" (ngSubmit)="onSubmit()">
+      <div class="mb-3">
+        <label>Title</label>
+        <input class="form-control" formControlName="title" />
+      </div>
 
-@Component({
-  selector: 'app-project-form',
-  templateUrl: './project-form.component.html',
-})
-export class ProjectFormComponent {
-  @Output() projectCreated = new EventEmitter<void>();
-  projectForm: FormGroup;
-  genres = ['Action', 'Drama', 'Comedy', 'Sci-Fi', 'Horror', 'Romance'];
-  roles = ['Director', 'Producer', 'Writer', 'Actor', 'Editor'];
-  names = ['Kishore', 'Anjali', 'Ron', 'Swati', 'Aryan'];
+      <div class="mb-3">
+        <label>Genre</label>
+        <select class="form-select" formControlName="genre">
+          <option value="">Select Genre</option>
+          <option *ngFor="let g of genres" [value]="g">{{ g }}</option>
+        </select>
+      </div>
 
-  constructor(private fb: FormBuilder, private service: ProjectService) {
-    this.projectForm = this.fb.group({
-      title: ['', Validators.required],
-      genre: ['', Validators.required],
-      budget: [null, [Validators.required, Validators.min(1)]],
-      startDate: ['', Validators.required],
-      endDate: ['', Validators.required],
-      isTemplate: [false],
-      keyTeamMembers: this.fb.array([], Validators.required),
-    });
+      <div class="mb-3">
+        <label>Budget</label>
+        <input type="number" class="form-control" formControlName="budget" />
+      </div>
 
-    this.projectForm.get('isTemplate')?.valueChanges.subscribe(checked => {
-      if (checked) {
-        this.projectForm.patchValue({
-          title: 'Default Template',
-          genre: 'Sci-Fi',
-          budget: 5000000,
-          startDate: '2025-06-01',
-          endDate: '2025-12-01',
-        }, { emitEvent: false });
-        this.keyTeamMembers.clear();
-        this.keyTeamMembers.push(this.fb.group({ name: ['Kishore'], role: ['Director'] }));
-      } else {
-        this.projectForm.reset(undefined, { emitEvent: false });
-        this.keyTeamMembers.clear();
-      }
-    });
-  }
+      <div class="row mb-3">
+        <div class="col">
+          <label>Start Date</label>
+          <input type="date" class="form-control" formControlName="startDate" />
+        </div>
+        <div class="col">
+          <label>End Date</label>
+          <input type="date" class="form-control" formControlName="endDate" />
+        </div>
+      </div>
 
-  get keyTeamMembers(): FormArray {
-    return this.projectForm.get('keyTeamMembers') as FormArray;
-  }
+      <div class="form-check mb-3">
+        <input type="checkbox" class="form-check-input" formControlName="isTemplate" />
+        <label class="form-check-label">Use Template</label>
+      </div>
 
-  addTeamMember(name: string, role: string) {
-    if (name && role) {
-      this.keyTeamMembers.push(this.fb.group({ name: [name], role: [role] }));
-    }
-  }
+      <div class="mb-2">
+        <label>Add Team Member</label>
+        <div class="row">
+          <div class="col">
+            <select #name class="form-select">
+              <option *ngFor="let n of names">{{ n }}</option>
+            </select>
+          </div>
+          <div class="col">
+            <select #role class="form-select">
+              <option *ngFor="let r of roles">{{ r }}</option>
+            </select>
+          </div>
+          <div class="col">
+            <button class="btn btn-outline-secondary" type="button" (click)="addTeamMember(name.value, role.value)">
+              Add
+            </button>
+          </div>
+        </div>
+      </div>
 
-  removeTeamMember(index: number) {
-    this.keyTeamMembers.removeAt(index);
-  }
+      <ul class="list-group mb-3">
+        <li *ngFor="let tm of keyTeamMembers.controls; let i = index" class="list-group-item d-flex justify-content-between">
+          {{ tm.value.name }} ({{ tm.value.role }})
+          <button class="btn btn-sm btn-danger" type="button" (click)="removeTeamMember(i)">×</button>
+        </li>
+      </ul>
 
-  onSubmit() {
-    if (this.projectForm.invalid) {
-      this.projectForm.markAllAsTouched();
-      return;
-    }
-
-    this.service.createProject(this.projectForm.value).subscribe(() => {
-      this.projectCreated.emit();
-      this.projectForm.reset();
-      this.keyTeamMembers.clear();
-    });
-  }
-}
+      <button type="submit" class="btn btn-success">Create Project</button>
+    </form>
+  </div>
+</div>
