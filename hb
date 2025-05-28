@@ -1,20 +1,7 @@
-package com.project.movieproductionsystem.dto;
+package com.project.movieproductionsystem.repository;
 
-import lombok.*;
-import java.time.LocalDate;
-import java.util.List;
+import com.project.movieproductionsystem.entity.MovieProject;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class MovieProjectDTO {
-    private Long id;
-    private String title;
-    private String genre;
-    private Double budget;
-    private LocalDate startDate;
-    private LocalDate endDate;
-    private boolean isTemplate;
-    private List<String> keyTeamMembers;
+public interface MovieProjectRepository extends JpaRepository<MovieProject, Long> {
 }
