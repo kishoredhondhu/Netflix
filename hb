@@ -1,4 +1,26 @@
-<!-- Google Fonts + Bootstrap -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f5f7fa;
+}
+
+.navbar-brand {
+  font-weight: 600;
+  font-size: 22px;
+  color: #fff !important;
+}
+
+.sidebar {
+  background-color: #ffffff;
+  height: 100vh;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar .list-group-item {
+  border: none;
+  font-weight: 500;
+}
+
+.sidebar .active {
+  background-color: #0d6efd;
+  color: white;
+}
