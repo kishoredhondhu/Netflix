@@ -1,20 +1,28 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
-  <a class="navbar-brand" href="#">🎬 Movie Production</a>
-</nav>
+<h3>Project Dashboard</h3>
 
-<div class="container-fluid mt-3">
-  <div class="row">
-    <div class="col-md-3">
-      <div class="list-group">
-        <a class="list-group-item list-group-item-action active">Dashboard</a>
-        <a class="list-group-item list-group-item-action">Create Project</a>
-        <a class="list-group-item list-group-item-action">Manage Budget</a>
-      </div>
-    </div>
-    <div class="col-md-9">
-      <app-project-form></app-project-form>
-      <hr />
-      <app-project-list></app-project-list>
-    </div>
-  </div>
-</div>
+<table class="table table-bordered table-hover">
+  <thead class="table-dark">
+    <tr>
+      <th>Title</th>
+      <th>Genre</th>
+      <th>Budget</th>
+      <th>Timeline</th>
+      <th>Template</th>
+      <th>Team</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let p of projects">
+      <td>{{ p.title }}</td>
+      <td>{{ p.genre }}</td>
+      <td>₹{{ p.budget }}</td>
+      <td>{{ p.startDate }} → {{ p.endDate }}</td>
+      <td><span class="badge bg-info">{{ p.isTemplate ? 'Yes' : 'No' }}</span></td>
+      <td>
+        <ul class="mb-0 ps-3">
+          <li *ngFor="let member of p.keyTeamMembers">{{ member }}</li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
