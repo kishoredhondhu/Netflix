@@ -1,24 +1,33 @@
-<nav class="navbar navbar-dark bg-dark px-4">
-  <span class="navbar-brand">🎬 Movie Production</span>
-</nav>
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
-<div class="container-fluid mt-4">
-  <button class="btn btn-outline-secondary mb-3" (click)="showSidebar = !showSidebar">
-    {{ showSidebar ? 'Hide' : 'Show' }} Sidebar
-  </button>
+export interface TeamMember {
+  name: string;
+  role: string;
+}
 
-  <div class="row">
-    <div class="col-md-3" *ngIf="showSidebar">
-      <div class="list-group">
-        <a class="list-group-item active">Dashboard</a>
-        <a class="list-group-item">Create Project</a>
-        <a class="list-group-item">Manage Budget</a>
-      </div>
-    </div>
+export interface MovieProject {
+  id?: number;
+  title: string;
+  genre: string;
+  budget: number;
+  startDate: string;
+  endDate: string;
+  isTemplate: boolean;
+  keyTeamMembers: TeamMember[];
+}
 
-    <div [class.col-md-9]="showSidebar" [class.col-md-12]="!showSidebar">
-      <app-project-form (projectCreated)="loadProjects()"></app-project-form>
-      <app-project-list [projects]="projects"></app-project-list>
-    </div>
-  </div>
-</div>
+@Injectable({ providedIn: 'root' })
+export class ProjectService {
+  private baseUrl = 'http://localhost:8081/api/projects';
+  constructor(private http: HttpClient) {}
+
+  createProject(project: MovieProject): Observable<MovieProject> {
+    return this.http.post<MovieProject>(this.baseUrl, project);
+  }
+
+  getAllProjects(): Observable<MovieProject[]> {
+    return this.http.get<MovieProject[]>(this.baseUrl);
+  }
+}
