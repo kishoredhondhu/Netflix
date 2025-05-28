@@ -1,18 +1,10 @@
-✅ Sample Postman Commands
-🔹 Create a Member
-POST http://localhost:8080/api/cast-crew
-
-json
-Copy
-Edit
-{
-  "name": "Kishore Kumar",
-  "role": "Actor",
-  "contactEmail": "kishore@example.com",
-  "contactPhone": "9998887770",
-  "contractStatus": "SIGNED",
-  "availabilityDates": ["2025-07-01", "2025-07-05"],
-  "contractFileName": "kishore_contract.pdf"
+export interface CastCrewMember {
+  id?: number;
+  name: string;
+  role: string;
+  contactEmail: string;
+  contactPhone: string;
+  contractStatus: 'PENDING' | 'SIGNED' | 'EXPIRED';
+  availabilityDates: string[];  // ISO date strings
+  contractFileName?: string;
 }
-🔹 Get All
-GET http://localhost:8080/api/cast-crew
