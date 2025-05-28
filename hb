@@ -1,26 +1,23 @@
-body {
-  font-family: 'Inter', sans-serif;
-  background-color: #f5f7fa;
-}
+<nav class="navbar navbar-dark bg-dark px-3">
+  <a class="navbar-brand" href="#">🎬 Movie Production</a>
+</nav>
 
-.navbar-brand {
-  font-weight: 600;
-  font-size: 22px;
-  color: #fff !important;
-}
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3 sidebar p-3">
+      <div class="list-group">
+        <a class="list-group-item list-group-item-action active"><i class="bi bi-speedometer2"></i> Dashboard</a>
+        <a class="list-group-item list-group-item-action"><i class="bi bi-plus-circle"></i> Create Project</a>
+        <a class="list-group-item list-group-item-action"><i class="bi bi-currency-dollar"></i> Manage Budget</a>
+      </div>
+    </div>
 
-.sidebar {
-  background-color: #ffffff;
-  height: 100vh;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.sidebar .list-group-item {
-  border: none;
-  font-weight: 500;
-}
-
-.sidebar .active {
-  background-color: #0d6efd;
-  color: white;
-}
+    <!-- Main Content -->
+    <div class="col-md-9 p-4">
+      <app-project-form></app-project-form>
+      <hr />
+      <app-project-list></app-project-list>
+    </div>
+  </div>
+</div>
