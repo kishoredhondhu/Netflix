@@ -1,6 +1,8 @@
-CREATE TABLE users (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL
+USE movieproductionlogin;
+
+INSERT INTO users (username, password, role)
+VALUES (
+  'admin',
+  '$2a$10$0NkkknISnYZzK0jPBNhUw.CZyMdG0T9MrDhQW0sW23G.LvvYRBWiy',  -- this is 'admin123'
+  'PRODUCTION_MANAGER'
 );
