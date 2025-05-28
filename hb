@@ -1,23 +1,19 @@
-<nav class="navbar navbar-dark bg-dark px-4">
-  <span class="navbar-brand">🎬 Movie Production</span>
-</nav>
+import { Component } from '@angular/core';
 
-<div class="container-fluid mt-3">
-  <button class="btn btn-outline-secondary mb-3" (click)="showSidebar = !showSidebar">
-    {{ showSidebar ? 'Hide' : 'Show' }} Sidebar
-  </button>
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
+})
+export class AppComponent {
+  showSidebar = true;
+  activeSection: 'dashboard' | 'form' = 'dashboard';
 
-  <div class="row">
-    <div class="col-md-3" *ngIf="showSidebar">
-      <div class="list-group">
-        <a class="list-group-item active">Dashboard</a>
-        <a class="list-group-item">Create Project</a>
-      </div>
-    </div>
+  toggleSidebar() {
+    this.showSidebar = !this.showSidebar;
+  }
 
-    <div [class.col-md-9]="showSidebar" [class.col-md-12]="!showSidebar">
-      <app-project-form (projectCreated)="loadProjects()"></app-project-form>
-      <app-project-list [projects]="projects"></app-project-list>
-    </div>
-  </div>
-</div>
+  setSection(section: 'dashboard' | 'form') {
+    this.activeSection = section;
+  }
+}
