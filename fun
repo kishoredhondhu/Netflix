@@ -11,8 +11,9 @@ declare var bootstrap: any;
 export class ProjectFormComponent {
   @Output() projectCreated = new EventEmitter<void>();
   projectForm: FormGroup;
-  roles = ['Director', 'Producer', 'Writer', 'Cinematographer'];
-  genres = ['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Thriller'];
+
+  roles: string[] = ['Director', 'Producer', 'Writer', 'Cinematographer', 'Editor'];
+  genres: string[] = ['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Thriller'];
 
   constructor(private fb: FormBuilder, private service: ProjectService) {
     this.projectForm = this.fb.group({
@@ -68,8 +69,8 @@ export class ProjectFormComponent {
     }
   }
 
-  removeTeamMember(index: number) {
-    this.keyTeamMembers.removeAt(index);
+  removeTeamMember(i: number) {
+    this.keyTeamMembers.removeAt(i);
   }
 
   onSubmit() {
