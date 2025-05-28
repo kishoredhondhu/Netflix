@@ -1,5 +1,82 @@
+✅ 1. Add Budget Category
+POST /api/budget/category
+Headers:
+
+pgsql
+Copy
+Edit
+Content-Type: application/json
+Body (raw JSON):
+
+json
+Copy
+Edit
 {
-    "timestamp": "2025-05-28T17:52:18.116+00:00",
-    "status": 500,
-    "error": "Internal Server Error",
-    "trace": "org.springframework.dao.DataIntegrityViolationException: could not execute statement [Column 'actual_cost' cannot be null] [insert into budget_line_item (actual_cost,category_id,estimated_cost,item_name) values (?,?,?,?)]; SQL [insert into budget_line_item (actual_cost,category_id,estimated_cost,item_name) values (?,?,?,?)]; constraint [null]\r\n\tat org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:294)\r\n\tat org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:256)\r\n\tat org.springframework.orm.jpa.vendor.HibernateJpaDialect.translateExceptionIfPossible(HibernateJpaDialect.java:241)\r\n\tat org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.translateExceptionIfPossible(AbstractEntityManagerFactoryBean.java:560)\r\n\tat org.springframework.dao.support.ChainedPersistenceExceptionTranslator.translateExceptionIfPossible(ChainedPersistenceExceptionTranslator.java:61)\r\n\tat org.springframework.dao.support.DataAccessUtils.translateIfNecessary(DataAccessUtils.java:343)\r\n\tat org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:160)\r\n\tat org.springframework.aop.framework.
+  "categoryName": "Production",
+  "projectId": 1
+}
+🔁 Replace "projectId": 1 with a valid project ID from your database.
+
+✅ 2. Add Budget Line Item
+POST /api/budget/line-item
+Headers:
+
+pgsql
+Copy
+Edit
+Content-Type: application/json
+Body (raw JSON):
+
+json
+Copy
+Edit
+{
+  "itemName": "Camera Rental",
+  "estimatedCost": 50000,
+  "actualCost": 52000,
+  "categoryId": 1
+}
+🔁 Replace "categoryId": 1 with the ID returned from the /category API.
+
+✅ 3. Get All Budget Categories for a Project
+GET /api/budget/project/1
+🔁 Replace 1 with the actual project ID.
+
+Returns:
+
+json
+Copy
+Edit
+[
+  {
+    "id": 1,
+    "categoryName": "Production",
+    "projectId": 1,
+    "lineItems": [
+      {
+        "id": 1,
+        "itemName": "Camera Rental",
+        "estimatedCost": 50000,
+        "actualCost": 52000,
+        "categoryId": 1
+      }
+    ]
+  }
+]
+✅ 4. Update a Line Item
+PUT /api/budget/line-item
+Body:
+
+json
+Copy
+Edit
+{
+  "id": 1,
+  "itemName": "Updated Camera Rental",
+  "estimatedCost": 50000,
+  "actualCost": 53000,
+  "categoryId": 1
+}
+✅ 5. Delete a Line Item
+DELETE /api/budget/line-item/1
+🔁 Replace 1 with the line item ID to delete
