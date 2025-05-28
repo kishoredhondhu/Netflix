@@ -1,7 +1,9 @@
-package com.project.movieproductionsystem.repository;
+package com.project.movieproductionsystem.service;
 
-import com.project.movieproductionsystem.entity.MovieProject;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.project.movieproductionsystem.dto.MovieProjectDTO;
+import java.util.List;
 
-public interface MovieProjectRepository extends JpaRepository<MovieProject, Long> {
+public interface MovieProjectService {
+    MovieProjectDTO createProject(MovieProjectDTO dto);
+    List<MovieProjectDTO> getAllProjects();
 }
