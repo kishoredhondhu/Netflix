@@ -1,31 +1,85 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { BudgetCategory, BudgetLineItem } from '../models/budget-category.model';
+import { Component, OnInit } from '@angular/core';
+import { BudgetService } from 'src/app/services/budget.service';
+import { BudgetCategory, BudgetLineItem } from 'src/app/models/budget-category.model';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 
-@Injectable({ providedIn: 'root' })
-export class BudgetService {
-  private baseUrl = 'http://localhost:8081/api/budget';
+@Component({
+  selector: 'app-budget-management',
+  templateUrl: './budget-management.component.html'
+})
+export class BudgetManagementComponent implements OnInit {
+  projectId = 1; // 👈 Replace with dynamic project ID
+  categories: BudgetCategory[] = [];
 
-  constructor(private http: HttpClient) {}
+  categoryForm!: FormGroup;
+  lineItemForms: { [key: number]: FormGroup } = {};
 
-  getProjectBudget(projectId: number): Observable<BudgetCategory[]> {
-    return this.http.get<BudgetCategory[]>(`${this.baseUrl}/project/${projectId}`);
+  constructor(private service: BudgetService, private fb: FormBuilder) {}
+
+  ngOnInit(): void {
+    this.categoryForm = this.fb.group({
+      categoryName: ['', Validators.required]
+    });
+    this.loadBudget();
   }
 
-  addCategory(category: { categoryName: string; projectId: number }): Observable<BudgetCategory> {
-    return this.http.post<BudgetCategory>(`${this.baseUrl}/category`, category);
+  loadBudget(): void {
+    this.service.getProjectBudget(this.projectId).subscribe(data => {
+      this.categories = data;
+      // init line item forms per category
+      data.forEach(cat => {
+        this.lineItemForms[cat.id!] = this.fb.group({
+          itemName: ['', Validators.required],
+          estimatedCost: [0, [Validators.required, Validators.min(1)]],
+          actualCost: [0, [Validators.required, Validators.min(0)]]
+        });
+      });
+    });
   }
 
-  addLineItem(item: BudgetLineItem): Observable<BudgetLineItem> {
-    return this.http.post<BudgetLineItem>(`${this.baseUrl}/line-item`, item);
+  addCategory(): void {
+    if (this.categoryForm.invalid) return;
+    const payload = {
+      categoryName: this.categoryForm.value.categoryName,
+      projectId: this.projectId
+    };
+    this.service.addCategory(payload).subscribe(() => {
+      this.categoryForm.reset();
+      this.loadBudget();
+    });
   }
 
-  updateLineItem(item: BudgetLineItem): Observable<BudgetLineItem> {
-    return this.http.put<BudgetLineItem>(`${this.baseUrl}/line-item`, item);
+  addLineItem(categoryId: number): void {
+    const form = this.lineItemForms[categoryId];
+    if (form.invalid) return;
+
+    const item: BudgetLineItem = {
+      itemName: form.value.itemName,
+      estimatedCost: form.value.estimatedCost,
+      actualCost: form.value.actualCost,
+      categoryId
+    };
+
+    this.service.addLineItem(item).subscribe(() => {
+      form.reset({ estimatedCost: 0, actualCost: 0 });
+      this.loadBudget();
+    });
   }
 
-  deleteLineItem(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/line-item/${id}`);
+  deleteLineItem(id: number): void {
+    this.service.deleteLineItem(id).subscribe(() => this.loadBudget());
+  }
+
+  calculateCategoryTotals(category: BudgetCategory) {
+    let estimated = 0, actual = 0;
+    category.lineItems.forEach(i => {
+      estimated += i.estimatedCost;
+      actual += i.actualCost;
+    });
+    return {
+      estimated,
+      actual,
+      variance: actual - estimated
+    };
   }
 }
