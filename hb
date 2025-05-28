@@ -1,73 +1,58 @@
-import { Component, EventEmitter, Output } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
-import { ProjectService } from 'src/app/services/project.service';
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-primary text-white">Create Movie Project</div>
+  <div class="card-body">
+    <form [formGroup]="projectForm" (ngSubmit)="onSubmit()">
+      <div class="mb-3">
+        <label>Title</label>
+        <input class="form-control" formControlName="title" />
+      </div>
 
-@Component({
-  selector: 'app-project-form',
-  templateUrl: './project-form.component.html'
-})
-export class ProjectFormComponent {
-  @Output() projectCreated = new EventEmitter<void>();
-  projectForm: FormGroup;
-  genres = ['Action', 'Drama', 'Comedy', 'Sci-Fi', 'Horror', 'Romance'];
+      <div class="mb-3">
+        <label>Genre</label>
+        <select class="form-select" formControlName="genre">
+          <option value="">Select Genre</option>
+          <option *ngFor="let g of genres" [value]="g">{{ g }}</option>
+        </select>
+      </div>
 
-  constructor(private fb: FormBuilder, private service: ProjectService) {
-    this.projectForm = this.fb.group({
-      title: ['', Validators.required],
-      genre: ['', Validators.required],
-      budget: [null, [Validators.required, Validators.min(1)]],
-      startDate: ['', Validators.required],
-      endDate: ['', Validators.required],
-      isTemplate: [false],
-      keyTeamMembers: this.fb.array([], Validators.required),
-    });
+      <div class="mb-3">
+        <label>Budget</label>
+        <input type="number" class="form-control" formControlName="budget" />
+      </div>
 
-    this.projectForm.get('isTemplate')?.valueChanges.subscribe(checked => {
-      if (checked) {
-        this.projectForm.patchValue({
-          title: 'Default Project',
-          genre: 'Sci-Fi',
-          budget: 5000000,
-          startDate: '2025-07-01',
-          endDate: '2025-12-01',
-        }, { emitEvent: false });
-        this.keyTeamMembers.clear();
-        ['Director', 'Producer'].forEach(name =>
-          this.keyTeamMembers.push(this.fb.control(name))
-        );
-      } else {
-        this.projectForm.reset(undefined, { emitEvent: false });
-        this.keyTeamMembers.clear();
-      }
-    });
-  }
+      <div class="row mb-3">
+        <div class="col">
+          <label>Start Date</label>
+          <input type="date" class="form-control" formControlName="startDate" />
+        </div>
+        <div class="col">
+          <label>End Date</label>
+          <input type="date" class="form-control" formControlName="endDate" />
+        </div>
+      </div>
 
-  get keyTeamMembers(): FormArray {
-    return this.projectForm.get('keyTeamMembers') as FormArray;
-  }
+      <div class="form-check mb-3">
+        <input type="checkbox" class="form-check-input" formControlName="isTemplate" />
+        <label class="form-check-label">Use Template</label>
+      </div>
 
-  addTeamMember(nameInput: HTMLInputElement) {
-    const name = nameInput.value.trim();
-    if (name) {
-      this.keyTeamMembers.push(this.fb.control(name));
-      nameInput.value = '';
-    }
-  }
+      <div class="mb-3">
+        <label>Add Team Member</label>
+        <div class="input-group">
+          <input #nameInput class="form-control" placeholder="Enter name" />
+          <button class="btn btn-outline-secondary" type="button" (click)="addTeamMember(nameInput)">Add</button>
+        </div>
+      </div>
 
-  removeTeamMember(index: number) {
-    this.keyTeamMembers.removeAt(index);
-  }
+      <ul class="list-group mb-3">
+        <li *ngFor="let m of keyTeamMembers.controls; let i=index"
+            class="list-group-item d-flex justify-content-between">
+          {{ m.value }}
+          <button class="btn btn-sm btn-danger" type="button" (click)="removeTeamMember(i)">×</button>
+        </li>
+      </ul>
 
-  onSubmit() {
-    if (this.projectForm.invalid) {
-      this.projectForm.markAllAsTouched();
-      return;
-    }
-
-    this.service.createProject(this.projectForm.value).subscribe(() => {
-      this.projectCreated.emit();
-      this.projectForm.reset();
-      this.keyTeamMembers.clear();
-    });
-  }
-}
+      <button class="btn btn-success" type="submit">Create Project</button>
+    </form>
+  </div>
+</div>
