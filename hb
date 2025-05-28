@@ -1,55 +1,32 @@
-package com.project.movieproductionsystem.filter;
+package com.project.movieproductionsystem.controller;
 
+import com.project.movieproductionsystem.dto.AuthRequest;
+import com.project.movieproductionsystem.dto.AuthResponse;
 import com.project.movieproductionsystem.repository.UserRepository;
 import com.project.movieproductionsystem.service.JwtService;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-
-@Component
+@RestController
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
-public class JwtAuthFilter extends OncePerRequestFilter {
+public class AuthController {
 
+    private final UserRepository userRepo;
     private final JwtService jwtService;
-    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    @PostMapping("/login")
+    public AuthResponse login(@RequestBody AuthRequest request) {
+        var user = userRepo.findByUsername(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String username;
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
         }
 
-        jwt = authHeader.substring(7);
-        username = jwtService.extractUsername(jwt);
-
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            var user = userRepository.findByUsername(username).orElse(null);
-
-            if (user != null && jwtService.isTokenValid(jwt, user.getUsername())) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(user.getUsername(), null, null);
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-        }
-
-        filterChain.doFilter(request, response);
+        String token = jwtService.generateToken(user.getUsername());
+        return new AuthResponse(token);
     }
 }
