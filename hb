@@ -1,18 +1,21 @@
-import { Component, OnInit } from '@angular/core';
-import { MovieProject, ProjectService } from 'src/app/services/project.service';
-
-@Component({
-  selector: 'app-project-list',
-  templateUrl: './project-list.component.html',
-})
-export class ProjectListComponent implements OnInit {
-  projects: MovieProject[] = [];
-
-  constructor(private projectService: ProjectService) {}
-
-  ngOnInit(): void {
-    this.projectService.getAllProjects().subscribe((data) => {
-      this.projects = data;
-    });
-  }
-}
+<h2>Project Dashboard</h2>
+<table border="1">
+  <tr>
+    <th>Title</th>
+    <th>Genre</th>
+    <th>Budget</th>
+    <th>Timeline</th>
+    <th>Template</th>
+    <th>Team Members</th>
+  </tr>
+  <tr *ngFor="let p of projects">
+    <td>{{ p.title }}</td>
+    <td>{{ p.genre }}</td>
+    <td>{{ p.budget }}</td>
+    <td>{{ p.startDate }} to {{ p.endDate }}</td>
+    <td>{{ p.isTemplate ? 'Yes' : 'No' }}</td>
+    <td>
+      <ul><li *ngFor="let m of p.keyTeamMembers">{{ m }}</li></ul>
+    </td>
+  </tr>
+</table>
