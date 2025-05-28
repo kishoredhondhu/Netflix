@@ -1,25 +1,18 @@
-<div *ngIf="submitted" style="color: green;">Project created successfully!</div>
+import { Component, OnInit } from '@angular/core';
+import { MovieProject, ProjectService } from 'src/app/services/project.service';
 
-<form [formGroup]="projectForm" (ngSubmit)="onSubmit()">
-  <input formControlName="title" placeholder="Title" required /><br>
-  <input formControlName="genre" placeholder="Genre" required /><br>
-  <input type="number" formControlName="budget" placeholder="Budget" required /><br>
-  <input type="date" formControlName="startDate" /><br>
-  <input type="date" formControlName="endDate" /><br>
+@Component({
+  selector: 'app-project-list',
+  templateUrl: './project-list.component.html',
+})
+export class ProjectListComponent implements OnInit {
+  projects: MovieProject[] = [];
 
-  <label>
-    <input type="checkbox" formControlName="isTemplate" /> Use Template
-  </label><br>
+  constructor(private projectService: ProjectService) {}
 
-  <input #teamMemberInput placeholder="Team Member Name" />
-  <button type="button" (click)="addTeamMember(teamMemberInput.value); teamMemberInput.value=''">Add Member</button>
-
-  <ul>
-    <li *ngFor="let member of keyTeamMembers.controls; let i=index">
-      {{ member.value }}
-      <button type="button" (click)="removeTeamMember(i)">Remove</button>
-    </li>
-  </ul>
-
-  <button type="submit">Create Project</button>
-</form>
+  ngOnInit(): void {
+    this.projectService.getAllProjects().subscribe((data) => {
+      this.projects = data;
+    });
+  }
+}
