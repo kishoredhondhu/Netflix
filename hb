@@ -1,18 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { MovieProject, ProjectService } from 'src/app/services/project.service';
-
-@Component({
-  selector: 'app-project-list',
-  templateUrl: './project-list.component.html',
-})
-export class ProjectListComponent implements OnInit {
-  projects: MovieProject[] = [];
-
-  constructor(private projectService: ProjectService) {}
-
-  ngOnInit(): void {
-    this.projectService.getAllProjects().subscribe((data) => {
-      this.projects = data;
-    });
-  }
-}
+<!-- Bootstrap CSS via CDN -->
+<link
+  href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+  rel="stylesheet"
+/>
