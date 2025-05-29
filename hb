@@ -1,28 +1,31 @@
-package com.movieproduction.entity;
+package com.movieproduction.dto;
 
-import jakarta.persistence.*;
+import lombok.*;
+import org.springframework.web.multipart.MultipartFile;
+
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class ScriptUploadRequestDTO {
+    private MultipartFile file;
+    private String uploadedBy;
+}
+
+
+package com.movieproduction.dto;
+
 import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Entity
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ScriptVersion {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class ScriptVersionResponseDTO {
     private Long id;
-
     private String fileName;
-
     private int versionNumber;
-
     private String uploadedBy;
-
     private LocalDateTime uploadedAt;
-
-    private String storagePath;
 }
