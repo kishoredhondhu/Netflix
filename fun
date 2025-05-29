@@ -1,27 +1,23 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { CastCrewMember } from '../models/cast-crew.model';
-import { Observable } from 'rxjs';
+package com.project.movieproductionsystem.repository;
 
-@Injectable({ providedIn: 'root' })
-export class CastCrewService {
-  private baseUrl = 'http://localhost:8081/api/cast-crew';
+import com.project.movieproductionsystem.entity.Scene;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-  constructor(private http: HttpClient) {}
+import java.util.List;
 
-  getAll(): Observable<CastCrewMember[]> {
-    return this.http.get<CastCrewMember[]>(this.baseUrl);
-  }
+public interface SceneRepository extends JpaRepository<Scene, Long> {
+    List<Scene> findByProjectId(Long projectId);
+}
 
-  create(member: CastCrewMember): Observable<CastCrewMember> {
-    return this.http.post<CastCrewMember>(this.baseUrl, member);
-  }
 
-  update(id: number, member: CastCrewMember): Observable<CastCrewMember> {
-    return this.http.put<CastCrewMember>(`${this.baseUrl}/${id}`, member);
-  }
 
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${id}`);
-  }
+package com.project.movieproductionsystem.repository;
+
+import com.project.movieproductionsystem.entity.ShootingDay;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface ShootingDayRepository extends JpaRepository<ShootingDay, Long> {
+    List<ShootingDay> findByProjectId(Long projectId);
 }
